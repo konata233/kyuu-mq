@@ -1,5 +1,7 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::Shutdown;
+use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use crate::mq::breaker::core::Breaker;
 use crate::mq::net::chan::Channel;
@@ -7,7 +9,7 @@ use crate::mq::net::conn::PhysicalConnection;
 
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
-    connections: Vec<PhysicalConnection>,
+    connections: Vec<Arc<Mutex<PhysicalConnection>>>,
 }
 
 impl PhysicalConnectionManager {
@@ -28,9 +30,22 @@ impl PhysicalConnectionManager {
         self
     }
 
+    pub fn remove(&mut self, conn: Arc<Mutex<PhysicalConnection>>) -> &mut Self {
+        self.connections.remove(
+            self.connections.iter().position(|x| Arc::ptr_eq(x, &conn)).unwrap()
+        );
+        self
+    }
+
     pub fn close(&self) {
         for conn in &self.connections {
-            conn.stream.shutdown(Shutdown::Both).unwrap()
+            let c = conn.lock().unwrap();
+            if !c.closed.clone().clone().take() {
+                c.stream
+                    .borrow_mut()
+                    .shutdown(Shutdown::Both)
+                    .unwrap()
+            }
         }
     }
 }

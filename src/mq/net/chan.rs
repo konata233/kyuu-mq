@@ -1,7 +1,7 @@
 pub struct Channel {
     pub name: String,
-    receiving: u32,
-    received: u32,
+    receiving: u64,
+    received: u64,
     
     buffer: Vec<u8>
 }
@@ -16,13 +16,14 @@ impl Channel {
         }
     }
 
-    pub fn set_receiving(&mut self, receiving: u32) {
+    pub fn set_receiving(&mut self, receiving: u64) -> &mut Self {
         self.receiving = receiving;
+        self
     }
 
-    pub fn write_buffer(&mut self, mut data: Vec<u8>) -> bool {
+    pub fn write_buffer(&mut self, mut data: Vec<u8>, size: u64) -> bool {
         self.buffer.append(&mut data);
-        self.received += 512;
+        self.received += size;
 
         self.received >= self.receiving
     }
@@ -32,5 +33,9 @@ impl Channel {
         self.received = 0;
 
         self.buffer.drain(0..self.buffer.len()).collect()
+    }
+
+    pub fn peek_buffer(&self) -> Vec<u8> {
+        self.buffer.clone()
     }
 }

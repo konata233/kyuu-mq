@@ -1,7 +1,7 @@
+use std::cell::RefCell;
 use crate::mq::net::conn::PhysicalConnection;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex, Condvar};
-use std::thread;
 use crate::mq::net::manager::ChannelManager;
 
 pub struct PhysicalConnectionFactory {
@@ -30,8 +30,6 @@ impl PhysicalConnectionFactory {
     }
 
     pub fn set_stream(mut self, stream: TcpStream) -> Self {
-        self.local = Some(stream.local_addr().unwrap().clone());
-        self.remote = Some(stream.peer_addr().unwrap().clone());
         self.stream = Some(stream);
         self
     }
@@ -46,16 +44,10 @@ impl PhysicalConnectionFactory {
             Ok(PhysicalConnection {
                 local_addr: self.local.unwrap(),
                 remote_addr: self.remote.unwrap(),
-                stream: conn,
-                handle: Some(thread::spawn(move || {
-                    let (lock, condvar) = &*flag;
-                    let mut flag = lock.lock().unwrap();
-                    while !*flag {
-                        flag = condvar.wait(flag).unwrap();
-                    }
-                })),
-                launch_flag: flag2,
-                channel_manager: ChannelManager::new()
+                stream: RefCell::from(conn),
+                closed: RefCell::from(false),
+
+                channel_manager: RefCell::from(ChannelManager::new())
             })
         }
         else if let Some(conn) = self.stream {
@@ -64,16 +56,10 @@ impl PhysicalConnectionFactory {
             Ok(PhysicalConnection {
                 local_addr: self.local.unwrap(),
                 remote_addr: self.remote.unwrap(),
-                stream: conn,
-                handle: Some(thread::spawn(move || {
-                    let (lock, condvar) = &*flag;
-                    let mut flag = lock.lock().unwrap();
-                    while !*flag {
-                        flag = condvar.wait(flag).unwrap();
-                    }
-                })),
-                launch_flag: flag2,
-                channel_manager: ChannelManager::new()
+                stream: RefCell::from(conn),
+                closed: RefCell::from(false),
+
+                channel_manager: RefCell::from(ChannelManager::new())
             })
         }
         else {

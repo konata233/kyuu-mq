@@ -1,10 +1,13 @@
+use std::cell::RefCell;
 use std::error::Error;
 use std::io::{Read, Write};
+use std::io::ErrorKind::UnexpectedEof;
 use std::net::{SocketAddr, TcpStream};
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread::JoinHandle;
+use std::ops::DerefMut;
+use std::sync::{Arc, Mutex};
+use std::thread;
 use crate::mq::net::chan::Channel;
-use crate::mq::net::manager::ChannelManager;
+use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 use crate::mq::protocol::proto::DataHead;
 use crate::mq::protocol::protobase::Deserialize;
 
@@ -12,62 +15,89 @@ pub struct PhysicalConnection {
     pub local_addr: SocketAddr,
     pub remote_addr: SocketAddr,
 
-    pub stream: TcpStream,
+    pub stream: RefCell<TcpStream>,
+    pub closed: RefCell<bool>,
 
-    pub handle: Option<JoinHandle<()>>,
-    pub launch_flag: Arc<(Mutex<bool>, Condvar)>,
-
-    pub channel_manager: ChannelManager
+    pub channel_manager: RefCell<ChannelManager>
 }
 
 impl PhysicalConnection {
 
-    pub fn launch(mut self) -> PhysicalConnection {
-        let (lock, condvar) = &*self.launch_flag;
-        let mut flag = lock.lock().unwrap();
-        *flag = true;
-        condvar.notify_one();
-
-        if let Some(handle) = self.handle {
-            handle.join().unwrap();
-        }
-        drop(flag);
-        self.handle = None;
-        self
+    pub fn launch(mut self) -> Arc<Mutex<PhysicalConnection>> {
+        let s0 = Arc::new(Mutex::new(self));
+        let s1 = s0.clone();
+        thread::spawn(move || {
+            s1.lock().unwrap().listen().unwrap();
+        });
+        s0
     }
 
-    pub fn listen(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn listen(&self) -> Result<(), Box<dyn Error>> {
         loop {
             let mut buf = [0u8; 256];
-            let n = self.stream.read(&mut buf).unwrap();
-            if n == 256 {
-                let head = DataHead::deserialize(buf);
-                let channel = String::from_utf8(head.channel.to_vec())?;
-                if !self.channel_manager.contains(&channel) {
-                    let ch = Channel::new(channel.clone());
-                    self.channel_manager.add(ch);
+            self.stream.borrow_mut().set_nodelay(false)?;
+            let n = self.stream.borrow_mut().read_exact(&mut buf);
+            match n {
+                Ok(_) => {
+                    dbg!("{:?}", String::from_utf8(buf.to_vec()).unwrap());
+                    self.stream.borrow_mut().flush().unwrap_or(());
+
+                    let head = DataHead::deserialize(buf);
+                    let channel = String::from_utf8(head.channel.to_vec())?;
+                    if !self.channel_manager.borrow_mut().contains(&channel) {
+                        let ch = Channel::new(channel.clone());
+                        self.channel_manager.borrow_mut().add(ch);
+                    }
+
+                    let size = u64::from(head.slice_size);
+                    let count = u64::from(head.slice_count) ;
+
+                    let mut channel_manager = self.channel_manager.borrow_mut();
+                    let channel = channel_manager
+                        .get(&channel.clone())
+                        .unwrap();
+
+                    channel.set_receiving(u64::from(size) * u64::from(count));
+                    // slice1(data_head, data[size]), slice2(data_head, data[size]), ...
+
+                    let mut completed = false;
+                    const SLICE_SIZE: u64 = 256;
+                    dbg!(size, count);
+                    for i in 0..(size * count / SLICE_SIZE) {
+                        self.stream.borrow_mut().flush().unwrap_or(());
+                        let mut buf = [0u8; SLICE_SIZE as usize];
+                        'read: loop {
+                            if let Ok(_) = self.stream.borrow_mut().read_exact(&mut buf) {
+                                dbg!("read!", i);
+                                dbg!("buf: ", String::from_utf8(buf.to_vec()).unwrap());
+                                completed = channel.write_buffer(Vec::from(&buf), SLICE_SIZE);
+                                //dbg!(channel.peek_buffer().last().unwrap());
+                                dbg!(channel.peek_buffer().len() / 256);
+                                break 'read;
+                            }
+                        }
+                        /*
+                        let n = self.stream.borrow_mut()
+                            .read(&mut buf)
+                            .unwrap();
+                        */
+                    }
+
+                    if completed {
+                        // todo: handle data; read data from buffer, send to router. deal with commands & normal msg
+                        let buf = channel.read_buffer();
+                        //dbg!(buf);
+                        let host = String::from_utf8(head.virtual_host.to_vec())?;
+                    }
                 }
-
-                let size = head.slice_size;
-                let count = head.slice_count;
-
-                let mut channel = self.channel_manager.get(&channel.clone()).unwrap();
-                channel.set_receiving(size * count);
-                // slice1(data_head, data[size]), slice2(data_head, data[size]), ...
-
-                let mut completed = false;
-                for _ in 0..size / 256 {
-                    let mut buf = [0u8; 256];
-                    let n = self.stream.read(&mut buf).unwrap();
-                    completed = channel.write_buffer(Vec::from(&buf));
-                }
-
-                if completed {
-                    // todo: handle data; read data from buffer, send to router. deal with commands & normal msg
-                    let mut buf = channel.read_buffer();
-                    let host = String::from_utf8(head.virtual_host.to_vec())?;
+                Err(e) => {
+                    if e.kind() == UnexpectedEof {
+                        self.closed.replace(true);
+                        break
+                    }
                 }
             }
         }
+        Ok(())
     }
 }
