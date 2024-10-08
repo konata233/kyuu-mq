@@ -2,12 +2,14 @@ use std::cell::RefCell;
 use crate::mq::net::conn::PhysicalConnection;
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex, Condvar};
-use crate::mq::net::manager::ChannelManager;
+use crate::mq::common::proxy::ProxyHolder;
+use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 
 pub struct PhysicalConnectionFactory {
     local: Option<SocketAddr>,
     remote: Option<SocketAddr>,
-    stream: Option<TcpStream>
+    stream: Option<TcpStream>,
+    manager_proxy: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>
 }
 
 impl PhysicalConnectionFactory {
@@ -15,8 +17,14 @@ impl PhysicalConnectionFactory {
         PhysicalConnectionFactory {
             local: None,
             remote: None,
-            stream: None
+            stream: None,
+            manager_proxy: None
         }
+    }
+
+    pub fn set_manager_proxy(mut self, manager_proxy: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>) -> Self {
+        self.manager_proxy = manager_proxy;
+        self
     }
 
     pub fn set_local(mut self, local: SocketAddr) -> Self {
@@ -35,8 +43,6 @@ impl PhysicalConnectionFactory {
     }
 
     pub fn fetch(mut self) -> Result<PhysicalConnection, ()> {
-        let flag = Arc::new((Mutex::new(false), Condvar::new()));
-        let flag2 = flag.clone();
         if let Some(rem) = self.remote {
             let conn = TcpStream::connect(rem).unwrap();
             self.local = Some(conn.local_addr().unwrap().clone());
@@ -47,6 +53,7 @@ impl PhysicalConnectionFactory {
                 stream: RefCell::from(conn),
                 closed: RefCell::from(false),
 
+                manager_proxy: self.manager_proxy.unwrap(),
                 channel_manager: RefCell::from(ChannelManager::new())
             })
         }
@@ -59,6 +66,7 @@ impl PhysicalConnectionFactory {
                 stream: RefCell::from(conn),
                 closed: RefCell::from(false),
 
+                manager_proxy: self.manager_proxy.unwrap(),
                 channel_manager: RefCell::from(ChannelManager::new())
             })
         }

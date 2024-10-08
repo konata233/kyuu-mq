@@ -3,12 +3,13 @@ use crate::mq::net::manager::PhysicalConnectionManager;
 use std::net::{TcpListener, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
 
 pub struct Breaker {
     tcp_listener: TcpListener,
     host_manager: Option<Arc<Mutex<HostManager>>>,
-    physical_connection_manager: Option<Arc<Mutex<PhysicalConnectionManager>>>,
+    physical_connection_manager: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>,
 }
 
 impl Breaker {
@@ -31,7 +32,7 @@ impl Breaker {
         self.physical_connection_manager = Some(
             Arc::new(
                 Mutex::new(
-                    PhysicalConnectionManager::new().init(self_ref.clone())
+                    ProxyHolder::new(PhysicalConnectionManager::new().init(self_ref.clone())).init()
                 )
             )
         );
@@ -50,19 +51,29 @@ impl Breaker {
         self.physical_connection_manager.as_mut()
             .unwrap()
             .lock()
-            .unwrap().close();
+            .unwrap()
+            .get()
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .close();
     }
 
     pub fn listen(&mut self) -> Result<(), ()> {
         for incoming in self.tcp_listener.incoming() {
             if let Ok(stream) = incoming {
                 let conn = PhysicalConnectionFactory::new()
+                    .set_manager_proxy(self.physical_connection_manager.clone())
                     .set_stream(stream)
                     .fetch();
                 self.physical_connection_manager.as_mut()
                     .unwrap()
                     .lock()
                     .unwrap()
+                    .get()
+                    .lock()
+                    .unwrap()
+                    .get_mut()
                     .add(conn?);
             }
         }

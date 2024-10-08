@@ -7,7 +7,7 @@ pub struct DataHead {
     pub channel: [u8; 32],
 
     pub version: [u8; 4],
-    pub data_type: [u8; 4],
+    pub routing_mod: [u8; 4],
     pub command: [u8; 24],
 
     pub route0: [u8; 32],
@@ -29,7 +29,7 @@ pub struct DataHead {
 impl DataHead {
     pub fn new(virtual_host: VirtualHost,
                channel: [u8; 32],
-               data_type: [u8; 4],
+               routing_mod: [u8; 4],
                command: [u8; 24],
                route: [u8; 128],
                slice_count: u32,
@@ -40,7 +40,7 @@ impl DataHead {
             virtual_host: <[u8; 32]>::try_from(virtual_host.name.as_bytes()).unwrap(),
             channel,
             version: [1u8, 0u8, 0u8, 0u8],
-            data_type,
+            routing_mod,
             command,
             route0: <[u8; 32]>::try_from(&route[0..32]).unwrap(),
             route1: <[u8; 32]>::try_from(&route[32..64]).unwrap(),
@@ -62,7 +62,7 @@ impl Serialize<256> for DataHead {
         serialized.append(&mut self.virtual_host.to_vec());
         serialized.append(&mut self.channel.to_vec());
         serialized.append(&mut self.version.to_vec());
-        serialized.append(&mut self.data_type.to_vec());
+        serialized.append(&mut self.routing_mod.to_vec());
         serialized.append(&mut self.command.to_vec());
         serialized.append(&mut self.route0.to_vec());
         serialized.append(&mut self.route1.to_vec());
@@ -87,7 +87,7 @@ impl Deserialize<256> for DataHead {
 
         let channel_sha256 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
         let version = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
-        let data_type = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
+        let routing_mod = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
         let command = <[u8; 24]>::try_from(deserialized.drain(0..24).collect::<Vec<_>>()).unwrap();
 
         let route0 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
@@ -109,7 +109,7 @@ impl Deserialize<256> for DataHead {
             virtual_host: virtual_host_sha256,
             channel: channel_sha256,
             version,
-            data_type,
+            routing_mod,
             command,
             route0,
             route1,
