@@ -6,8 +6,8 @@ use std::thread;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
 use crate::mq::protocol::raw::RawData;
+use crate::mq::queue::queue_object::QueueObject;
 
-// todo: add host
 pub struct Breaker {
     tcp_listener: TcpListener,
     host_manager: Option<Arc<Mutex<ProxyHolder<HostManager>>>>,
@@ -49,16 +49,15 @@ impl Breaker {
         })
     }
 
-    pub fn send_raw_to_host(&mut self, data: RawData) {
-        self.host_manager.as_mut()
-            .unwrap()
+    pub fn send_raw_to_host(&mut self, data: RawData) -> Option<QueueObject> {
+        self.host_manager.as_mut()?
             .lock()
             .unwrap()
             .get()
             .lock()
             .unwrap()
             .borrow_mut()
-            .send_raw_to_host(data);
+            .send_raw_to_host(data)
     }
 
     pub fn stop_worker(&mut self) {

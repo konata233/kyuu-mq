@@ -7,6 +7,7 @@ use crate::mq::breaker::core::Breaker;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::conn::PhysicalConnection;
 use crate::mq::protocol::raw::RawData;
+use crate::mq::queue::queue_object::QueueObject;
 
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
@@ -38,13 +39,12 @@ impl PhysicalConnectionManager {
         self
     }
 
-    pub fn send_raw_data(&self, raw_data: RawData) {
-        let breaker = self.breaker
-            .clone()
-            .unwrap()
+    pub fn send_raw_data(&self, raw_data: RawData) -> Option<QueueObject> {
+        self.breaker
+            .clone()?
             .lock()
             .unwrap()
-            .send_raw_to_host(raw_data);
+            .send_raw_to_host(raw_data)
     }
 
     pub fn close(&self) {

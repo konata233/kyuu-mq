@@ -61,7 +61,7 @@ impl VirtualHost {
     }
 
     pub fn process_incoming(&mut self, raw: RawData) -> Option<QueueObject> {
-        // todo: implement advanced routing.
+        // todo: implement advanced routing: * # ...
         let routing = raw.routing_key;
         let routing_copied = routing.clone();
 

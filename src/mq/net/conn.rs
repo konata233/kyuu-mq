@@ -197,7 +197,7 @@ impl PhysicalConnection {
                         let buf = channel.read_buffer();
                         let raw = self.process(&head, buf);
 
-                        self.manager_proxy
+                        let result = self.manager_proxy
                             .clone()
                             .lock()
                             .unwrap()
@@ -207,6 +207,8 @@ impl PhysicalConnection {
                             .unwrap()
                             .borrow_mut()
                             .send_raw_data(raw);
+
+                        // todo: send feedback to remote host.
                     }
                 }
                 Err(e) => {
