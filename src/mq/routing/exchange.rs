@@ -1,16 +1,17 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard};
 use crate::mq::queue::manager::QueueManager;
 use crate::mq::queue::qbase::Queue;
 use crate::mq::routing::key::RoutingKey;
 
-pub struct Exchange<T: Clone> {
+pub struct Exchange {
     name: String,
-    lower_exchange: HashMap<String, Exchange<T>>,
-    queue_manager: QueueManager<T>,
+    lower_exchange: HashMap<String, Exchange>,
+    queue_manager: QueueManager,
 }
 
-impl<T: Clone> Exchange<T> {
-    pub fn new(name: String) -> Exchange<T> {
+impl Exchange {
+    pub fn new(name: String) -> Exchange {
         Exchange {
             name,
             lower_exchange: HashMap::new(),
@@ -23,11 +24,11 @@ impl<T: Clone> Exchange<T> {
         self
     }
 
-    pub fn get_exchange(&mut self, name: &String) -> Option<&mut Exchange<T>> {
+    pub fn get_exchange(&mut self, name: &String) -> Option<&mut Exchange> {
         self.lower_exchange.get_mut(name)
     }
 
-    pub fn remove_exchange(&mut self, name: String) -> Option<Exchange<T>> {
+    pub fn remove_exchange(&mut self, name: String) -> Option<Exchange> {
         for value in self.lower_exchange.values_mut() {
             value.remove_all_exchanges();
         }
@@ -47,25 +48,29 @@ impl<T: Clone> Exchange<T> {
         self
     }
 
-    pub fn get_queue(&mut self, name: String) -> Option<&mut Queue<T>> {
+    pub fn get_queue(&mut self, name: &String) -> Option<Arc<Mutex<Queue>>> {
         self.queue_manager.get(name)
     }
 
-    pub fn remove_queue(&mut self, name: String) -> Option<Queue<T>> {
+    pub fn remove_queue(&mut self, name: String) -> Option<Arc<Mutex<Queue>>> {
         self.queue_manager.remove(name)
     }
 
-    pub fn get_all_queues(&self) -> Vec<&Queue<T>> {
+    pub fn get_all_queues(&self) -> Vec<Arc<Mutex<Queue>>> {
         self.queue_manager.get_all()
     }
 
     pub fn clear_queue(&mut self, name: String) -> &mut Self {
-        self.queue_manager.get(name).unwrap().clear();
+        self.queue_manager.get(&name)
+            .unwrap()
+            .lock()
+            .unwrap()
+            .clear();
         self
     }
 
-    pub fn walk(&mut self, routing: RoutingKey, next: usize) -> Option<Vec<&mut Exchange<T>>> {
-        if next > 3 {
+    pub fn walk(&mut self, routing: RoutingKey, next: usize) -> Option<Vec<&mut Exchange>> {
+        if next > 2 {
             return None;
         }
 
@@ -77,7 +82,7 @@ impl<T: Clone> Exchange<T> {
             RoutingKey::Fanout(key) => r = key,
         }
         let mut next_key  = r[next].clone();
-        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key =="!" || next == 3 {
+        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key =="!" || next == 2 {
             Some(vec![self])
         } else if next_key == "*" {
             let mut vec = vec![];

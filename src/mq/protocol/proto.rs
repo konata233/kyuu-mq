@@ -14,9 +14,9 @@ pub struct DataHead {
 
     pub route1: [u8; 32],
 
-    pub route2: [u8; 32],
+    pub route2: [u8; 32], // '*' to match any; '!' to pause
 
-    pub route3: [u8; 32],
+    pub route3: [u8; 32], // used as queue name
 
     pub slice_count: u32,
     pub slice_size: u32, // 512

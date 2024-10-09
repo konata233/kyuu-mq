@@ -1,11 +1,13 @@
-use crate::mq::protocol::raw::{Raw, RawCommand, RawData};
+use crate::mq::protocol::raw::{Raw, RawCommand, RawData, RawMessage};
+use crate::mq::queue::qbase::Queue;
 use crate::mq::queue::queue_object::QueueObject;
 use crate::mq::routing::exchange::Exchange;
 use crate::mq::routing::key::RoutingKey;
+use std::sync::{Arc, Mutex};
 
 pub struct VirtualHost {
     pub name: String,
-    base_exchange: Exchange<QueueObject>
+    base_exchange: Exchange
 }
 
 impl VirtualHost {
@@ -32,12 +34,13 @@ impl VirtualHost {
         self
     }
 
-    pub fn get_queue(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
+    pub fn get_queue(&mut self, name: &String, routing_key: RoutingKey) -> Option<Arc<Mutex<Queue>>> {
         let base = self.base_exchange.walk(routing_key, 0);
         if let Some(mut exc) = base {
-            exc[0].get_queue(name);
+            exc.get_mut(0)?.get_queue(name)
+        } else {
+            None
         }
-        self
     }
 
 
@@ -57,38 +60,77 @@ impl VirtualHost {
         self
     }
 
-    pub fn process_incoming(&mut self, raw: RawData) {
-        // todo: routing
+    pub fn process_incoming(&mut self, raw: RawData) -> Option<QueueObject> {
+        // todo: implement advanced routing.
         let routing = raw.routing_key;
-        let exchange = self.base_exchange.walk(routing, 0);
-        if let Some(exc) = exchange {
+        let routing_copied = routing.clone();
+
+        let queue_name = match routing {
+            RoutingKey::Direct(key) => key[3].clone(),
+            RoutingKey::Topic(key) => key[3].clone(),
+            RoutingKey::Fanout(key) => key[3].clone(),
+        };
+
+        let exchange = self.base_exchange.walk(routing_copied, 0);
+        if let Some(mut exc) = exchange {
             match raw.raw {
                 Raw::Command(cmd) => {
                     match cmd {
                         RawCommand::NewQueue(data) => {
-                            let queue_name = String::from_utf8(data).unwrap().trim();
-
+                            dbg!("new queue");
+                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
+                            exc[0].add_exchange(queue_name);
                         }
                         RawCommand::NewExchange(data) => {
-                            println!("new exchange");
+                            dbg!("new exchange");
+                            let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
+                            exc[0].add_exchange(exchange_name);
                         }
                         RawCommand::NewBinding(data) => {
-                            println!("new binding");
+                            dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
-                            let queue_name = String::from_utf8(data).unwrap().trim();
-
+                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
+                            exc[0].remove_queue(queue_name);
                         }
                         RawCommand::DropExchange(data) => {
-                            println!("drop exchange");
+                            dbg!("drop exchange");
+                            let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
+                            exc[0].remove_exchange(exchange_name);
                         }
                         RawCommand::DropBinding(data) => {
-                            println!("drop binding");
+                            dbg!("drop binding");
                         }
-                        RawCommand::Nop => {}
+                        RawCommand::Nop => {
+                            dbg!("nop");
+                        }
                     }
+                }
+                Raw::Message(data) => {
+                    dbg!("message");
+                    match data {
+                        RawMessage::Push(data) => {
+                            exc[0].get_queue(&queue_name)?.lock()
+                                .unwrap()
+                                .push_back(QueueObject::new(&self.name, data))
+                        },
+                        RawMessage::Fetch(data) => {
+                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
+                            let obj = exc[0].get_queue(&queue_name)?.lock()
+                                .unwrap()
+                                .pop_front()?;
+                            return Some(obj)
+                        }
+                        RawMessage::Nop => {
+                            dbg!("nop");
+                        }
+                    }
+                }
+                Raw::Nop => {
+                    dbg!("nop");
                 }
             }
         }
+        None
     }
 }

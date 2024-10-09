@@ -1,12 +1,13 @@
+use crate::mq::queue::queue_object::QueueObject;
 use std::sync::{Arc, Mutex};
 
-pub struct Queue<T> {
+pub struct Queue {
     name: String,
-    data: Arc<Mutex<Vec<T>>>,
+    data: Arc<Mutex<Vec<QueueObject>>>,
     len: u64
 }
 
-impl<T> Queue<T> where T: Clone {
+impl Queue {
     pub fn new(name: &String) -> Self {
         Queue {
             name: String::from(name),
@@ -15,13 +16,13 @@ impl<T> Queue<T> where T: Clone {
         }
     }
 
-    pub fn push_back(&mut self, value: T) {
+    pub fn push_back(&mut self, value: QueueObject) {
         let mut data = self.data.lock().unwrap();
         data.push(value);
         self.len += 1;
     }
 
-    pub fn pop_front(&mut self) -> Option<T> {
+    pub fn pop_front(&mut self) -> Option<QueueObject> {
         if self.is_empty() {
             return None;
         }
@@ -30,7 +31,7 @@ impl<T> Queue<T> where T: Clone {
         Some(data.remove(0))
     }
 
-    pub fn peek(&self) -> Option<T> {
+    pub fn peek(&self) -> Option<QueueObject> {
         if self.is_empty() {
             return None;
         }
