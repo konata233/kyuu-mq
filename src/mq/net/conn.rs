@@ -1,11 +1,3 @@
-use std::cell::RefCell;
-use std::error::Error;
-use std::io::{Read, Write};
-use std::io::ErrorKind::UnexpectedEof;
-use std::net::{SocketAddr, TcpStream};
-use std::ops::DerefMut;
-use std::sync::{Arc, Mutex};
-use std::thread;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
@@ -13,6 +5,13 @@ use crate::mq::protocol::proto::DataHead;
 use crate::mq::protocol::protobase::Deserialize;
 use crate::mq::protocol::raw::{Raw, RawCommand, RawData, RawMessage};
 use crate::mq::routing::key::RoutingKey;
+use std::cell::RefCell;
+use std::error::Error;
+use std::io::ErrorKind::UnexpectedEof;
+use std::io::{Read, Write};
+use std::net::{SocketAddr, TcpStream};
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 pub struct PhysicalConnection {
     pub local_addr: SocketAddr,
@@ -45,7 +44,7 @@ impl PhysicalConnection {
             0u8 => {
                 dbg!("normal msg");
                 // match second byte of routing_mod as msg type
-                let mut msg: RawMessage = match data_head.routing_mod[1] {
+                let msg: RawMessage = match data_head.routing_mod[1] {
                     0u8 => {
                         dbg!("normal push");
                         RawMessage::Push(buffer)
@@ -64,7 +63,7 @@ impl PhysicalConnection {
             1u8 => {
                 dbg!("command");
                 // match second byte of routing_mod as command type
-                let mut cmd: RawCommand = match data_head.routing_mod[1] {  
+                let cmd: RawCommand = match data_head.routing_mod[1] {
                     0u8 => {
                         dbg!("new queue");
                         RawCommand::NewQueue(buffer)
@@ -191,18 +190,23 @@ impl PhysicalConnection {
                                 }
                             }
                         }
-                        /*
-                        let n = self.stream.borrow_mut()
-                            .read(&mut buf)
-                            .unwrap();
-                        */
                     }
 
                     if completed {
                         // todo: handle data; read data from buffer, send to router. deal with commands & normal msg
                         let buf = channel.read_buffer();
-                        //dbg!(buf);
-                        let host = String::from_utf8(head.virtual_host.to_vec())?;
+                        let raw = self.process(&head, buf);
+
+                        self.manager_proxy
+                            .clone()
+                            .lock()
+                            .unwrap()
+                            .get()
+                            .clone()
+                            .lock()
+                            .unwrap()
+                            .borrow_mut()
+                            .send_raw_data(raw);
                     }
                 }
                 Err(e) => {

@@ -5,10 +5,12 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
+use crate::mq::protocol::raw::RawData;
 
+// todo: add host
 pub struct Breaker {
     tcp_listener: TcpListener,
-    host_manager: Option<Arc<Mutex<HostManager>>>,
+    host_manager: Option<Arc<Mutex<ProxyHolder<HostManager>>>>,
     physical_connection_manager: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>,
 }
 
@@ -25,7 +27,7 @@ impl Breaker {
         self.host_manager = Some(
             Arc::new(
                 Mutex::new(
-                    HostManager::new().init(self_ref.clone())
+                    ProxyHolder::new(HostManager::new().init(self_ref.clone())).init()
                 )
             )
         );
@@ -45,6 +47,18 @@ impl Breaker {
                 self.listen().unwrap();
             }).join().unwrap();
         })
+    }
+
+    pub fn send_raw_to_host(&mut self, data: RawData) {
+        self.host_manager.as_mut()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .get()
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .send_raw_to_host(data);
     }
 
     pub fn stop_worker(&mut self) {

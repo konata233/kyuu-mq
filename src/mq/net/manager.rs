@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use crate::mq::breaker::core::Breaker;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::conn::PhysicalConnection;
+use crate::mq::protocol::raw::RawData;
 
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
@@ -35,6 +36,15 @@ impl PhysicalConnectionManager {
             self.connections.iter().position(|x| Arc::ptr_eq(x, &conn)).unwrap()
         );
         self
+    }
+
+    pub fn send_raw_data(&self, raw_data: RawData) {
+        let breaker = self.breaker
+            .clone()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .send_raw_to_host(raw_data);
     }
 
     pub fn close(&self) {

@@ -1,3 +1,4 @@
+use crate::mq::protocol::raw::{Raw, RawCommand, RawData};
 use crate::mq::queue::manager::QueueManager;
 use crate::mq::queue::qbase::Queue;
 use crate::mq::queue::queue_object::QueueObject;
@@ -37,7 +38,34 @@ impl VirtualHost {
         self
     }
 
-    pub fn process_incoming(&mut self, buffer: Vec<u8>) {
-
+    pub fn process_incoming(&mut self, raw: RawData) {
+        // todo: routing
+        match raw.raw {
+            Raw::Command(cmd) => {
+                match cmd {
+                    RawCommand::NewQueue(data) => {
+                        let queue_name = String::from_utf8(data).unwrap().trim();
+                        self.add_queue(queue_name.to_string());
+                    }
+                    RawCommand::NewExchange(data) => {
+                        println!("new exchange");
+                    }
+                    RawCommand::NewBinding(data) => {
+                        println!("new binding");
+                    }
+                    RawCommand::DropQueue(data) => {
+                        let queue_name = String::from_utf8(data).unwrap().trim();
+                        self.remove_queue(queue_name.to_string());
+                    }
+                    RawCommand::DropExchange(data) => {
+                        println!("drop exchange");
+                    }
+                    RawCommand::DropBinding(data) => {
+                        println!("drop binding");
+                    }
+                    RawCommand::Nop => {}
+                }
+            }
+        }
     }
 }
