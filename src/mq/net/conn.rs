@@ -101,7 +101,7 @@ impl PhysicalConnection {
                 Raw::Nop
             }
         };
-        dbg!(&raw);
+        // dbg!(&raw);
         
         let routing_arr = [
             String::from_utf8(data_head.route0.clone().to_vec()).unwrap(),
@@ -113,7 +113,7 @@ impl PhysicalConnection {
         // match third byte of routing_mod as routing type
         let routing: RoutingKey = match data_head.routing_mod[2] {
             0u8 => {
-                dbg!("normal");
+                dbg!("direct");
                 RoutingKey::Direct(routing_arr)
             }
             1u8 => {
@@ -210,6 +210,7 @@ impl PhysicalConnection {
                             .unwrap()
                             .borrow_mut()
                             .send_raw_data(raw);
+                        // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
 
                         if let Some(feedback) = result {
                             let mut buffer = feedback.content;

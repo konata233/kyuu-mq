@@ -87,7 +87,7 @@ impl VirtualHost {
                             let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
                             exc[0].add_exchange(exchange_name);
                         }
-                        RawCommand::NewBinding(data) => {
+                        RawCommand::NewBinding(_) => {
                             dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
@@ -99,7 +99,7 @@ impl VirtualHost {
                             let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
                             exc[0].remove_exchange(exchange_name);
                         }
-                        RawCommand::DropBinding(data) => {
+                        RawCommand::DropBinding(_) => {
                             dbg!("drop binding");
                         }
                         RawCommand::Nop => {

@@ -82,9 +82,9 @@ impl Exchange {
             RoutingKey::Fanout(key) => r = key,
         }
         let mut next_key  = r[next].clone();
-        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key =="!" || next == 2 {
+        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key.starts_with("!") || next == 2 {
             Some(vec![self])
-        } else if next_key == "*" {
+        } else if next_key.starts_with("*") {
             let mut vec = vec![];
             for value in self.lower_exchange.values_mut() {
                 vec.push(value);

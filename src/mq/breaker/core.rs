@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
+use crate::mq::host::vhost::VirtualHost;
 use crate::mq::protocol::raw::RawData;
 use crate::mq::queue::queue_object::QueueObject;
 
@@ -101,11 +102,25 @@ pub struct Core {
 impl Core {
     pub fn new<A: ToSocketAddrs>(addr: A) -> Core {
         let mut breaker = Breaker::new(addr);
+
         let self_ref = Arc::new(Mutex::new(breaker));
         self_ref.lock()
             .as_mut()
             .unwrap()
             .init_managers(self_ref.clone());
+
+        // default host
+        let default_name = String::from("MQ_HOST");
+        self_ref.lock().unwrap().host_manager.clone()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .get()
+            .lock()
+            .unwrap()
+            .borrow_mut()
+            .add(default_name.clone(), VirtualHost::new(default_name));
+
         Core {
             breaker: self_ref,
         }
