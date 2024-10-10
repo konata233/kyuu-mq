@@ -8,7 +8,7 @@ use crate::mq::queue::queue_object::QueueObject;
 
 pub struct HostManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
-    virtual_hosts: HashMap<String, RefCell<VirtualHost>>
+    virtual_hosts: HashMap<String, Arc<Mutex<RefCell<VirtualHost>>>>
 }
 
 impl HostManager {
@@ -25,26 +25,29 @@ impl HostManager {
     }
 
     pub fn add(&mut self, name: String, vhost: VirtualHost) {
-        self.virtual_hosts.insert(name, RefCell::from(vhost));
+        self.virtual_hosts.insert(name, Arc::new(Mutex::new(RefCell::from(vhost))));
     }
 
-    pub fn get(&mut self, name: String) -> Option<&mut RefCell<VirtualHost>> {
+    pub fn get(&mut self, name: String) -> Option<&mut Arc<Mutex<RefCell<VirtualHost>>>> {
         self.virtual_hosts.get_mut(&name)
     }
 
-    pub fn remove(&mut self, name: String) -> Option<RefCell<VirtualHost>> {
+    pub fn remove(&mut self, name: String) -> Option<Arc<Mutex<RefCell<VirtualHost>>>> {
         self.virtual_hosts.remove(&name)
     }
 
-    pub fn get_all(&self) -> Vec<&RefCell<VirtualHost>> {
-        self.virtual_hosts.values().collect()
+    pub fn get_all(&self) -> Vec<Arc<Mutex<RefCell<VirtualHost>>>> {
+        self.virtual_hosts.values().cloned().collect()
     }
 
     pub fn send_raw_to_host(&self, raw: RawData) -> Option<QueueObject> {
-        let host_name = raw.virtual_host.clone();
-        let vhost = self.virtual_hosts.get(&host_name);
+        //println!("!!");
+        let host_name = raw.virtual_host.trim().to_string();
+        let vhost = self.virtual_hosts.get(&host_name).cloned();
         if let Some(vhost) = vhost {
-            vhost.borrow_mut().process_incoming(raw)
+            vhost.lock()
+                .unwrap()
+                .borrow_mut().process_incoming(raw)
         } else {
             None
         }

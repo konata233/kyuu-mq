@@ -63,8 +63,11 @@ impl VirtualHost {
     pub fn process_incoming(&mut self, raw: RawData) -> Option<QueueObject> {
         // todo: implement advanced routing: * # ...
         // always remember that the last value of RoutingKey is the name of the Queue.
+
+        println!("incoming data: {:?}", raw);
         let routing = raw.routing_key;
         let routing_copied = routing.clone();
+        let host = raw.virtual_host.trim_end_matches("\0").to_string();
 
         let queue_name = match routing {
             RoutingKey::Direct(key) => key[3].clone(),
@@ -132,6 +135,6 @@ impl VirtualHost {
                 }
             }
         }
-        None
+        Some(QueueObject::new(&host, String::from("success!").into_bytes()))
     }
 }

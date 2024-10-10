@@ -37,8 +37,14 @@ impl PhysicalConnection {
     }
 
     fn process(&self, data_head: &DataHead, buffer: Vec<u8>) -> RawData {
-        let channel = String::from_utf8(data_head.channel.clone().to_vec());
-        let virtual_host = String::from_utf8(data_head.virtual_host.clone().to_vec());
+        let channel = String::from_utf8(data_head.channel.clone().to_vec())
+            .unwrap()
+            .trim_end_matches("\0") // IMPORTANT!!
+            .to_string();
+        let virtual_host = String::from_utf8(data_head.virtual_host.clone().to_vec())
+            .unwrap()
+            .trim_end_matches("\0")
+            .to_string();
 
         // match first byte of routing_mod as command type
         let mut raw: Raw = match data_head.routing_mod[0] {
@@ -104,10 +110,10 @@ impl PhysicalConnection {
         // dbg!(&raw);
         
         let routing_arr = [
-            String::from_utf8(data_head.route0.clone().to_vec()).unwrap(),
-            String::from_utf8(data_head.route1.clone().to_vec()).unwrap(),
-            String::from_utf8(data_head.route2.clone().to_vec()).unwrap(),
-            String::from_utf8(data_head.route3.clone().to_vec()).unwrap()
+            String::from_utf8(data_head.route0.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
+            String::from_utf8(data_head.route1.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
+            String::from_utf8(data_head.route2.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
+            String::from_utf8(data_head.route3.clone().to_vec()).unwrap().trim_end_matches("\0").to_string()
         ];
         
         // match third byte of routing_mod as routing type
@@ -132,8 +138,8 @@ impl PhysicalConnection {
         
         RawData {
             raw,
-            channel: channel.unwrap(),
-            virtual_host: virtual_host.unwrap(),
+            channel: channel.clone(),
+            virtual_host: virtual_host.clone(),
             routing_key: routing
         }
     }
@@ -220,7 +226,6 @@ impl PhysicalConnection {
                             .borrow_mut()
                             .send_raw_to_host(raw);
                         // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
-
                         if let Some(feedback) = result {
                             let mut buffer = feedback.content;
                             if buffer.len() % 256 != 0 {

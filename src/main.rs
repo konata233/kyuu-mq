@@ -10,6 +10,7 @@ use crate::mq::common::context::RuntimeContext;
 use crate::test::test::test;
 
 // always remember that the last value of RoutingKey is the name of the Queue.
+// note that the \0 at the end of the strings must be trimmed using trim_end_matches() !!
 pub mod test;
 pub mod mq;
 
