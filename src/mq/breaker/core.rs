@@ -25,17 +25,19 @@ impl Breaker {
     }
 
     pub fn init_managers(&mut self, self_ref: Arc<Mutex<Breaker>>) {
-        self.host_manager = Some(
-            Arc::new(
-                Mutex::new(
-                    ProxyHolder::new(HostManager::new().init(self_ref.clone())).init()
-                )
+        let host_manager = Arc::new(
+            Mutex::new(
+                ProxyHolder::new(HostManager::new().init(self_ref.clone())).init()
             )
         );
+        self.host_manager = Some(
+            host_manager.clone()
+        );
+
         self.physical_connection_manager = Some(
             Arc::new(
                 Mutex::new(
-                    ProxyHolder::new(PhysicalConnectionManager::new().init(self_ref.clone())).init()
+                    ProxyHolder::new(PhysicalConnectionManager::new().init(self_ref.clone(), host_manager.clone())).init()
                 )
             )
         );

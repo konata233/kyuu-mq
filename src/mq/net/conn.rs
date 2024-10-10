@@ -209,7 +209,16 @@ impl PhysicalConnection {
                             .lock()
                             .unwrap()
                             .borrow_mut()
-                            .send_raw_data(raw);
+                            .host_manager
+                            .clone()
+                            .unwrap()
+                            .lock()
+                            .unwrap()
+                            .get()
+                            .lock()
+                            .unwrap()
+                            .borrow_mut()
+                            .send_raw_to_host(raw);
                         // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
 
                         if let Some(feedback) = result {

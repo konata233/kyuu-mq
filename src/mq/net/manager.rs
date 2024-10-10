@@ -4,6 +4,8 @@ use std::net::Shutdown;
 use std::ops::DerefMut;
 use std::sync::{Arc, Mutex};
 use crate::mq::breaker::core::Breaker;
+use crate::mq::common::proxy::ProxyHolder;
+use crate::mq::host::manager::HostManager;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::conn::PhysicalConnection;
 use crate::mq::protocol::raw::RawData;
@@ -12,6 +14,7 @@ use crate::mq::queue::queue_object::QueueObject;
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
     connections: Vec<Arc<Mutex<PhysicalConnection>>>,
+    pub host_manager: Option<Arc<Mutex<ProxyHolder<HostManager>>>>
 }
 
 impl PhysicalConnectionManager {
@@ -19,11 +22,13 @@ impl PhysicalConnectionManager {
         PhysicalConnectionManager {
             breaker: None,
             connections: Vec::new(),
+            host_manager: None,
         }
     }
 
-    pub fn init(mut self, breaker: Arc<Mutex<Breaker>>) -> Self {
+    pub fn init(mut self, breaker: Arc<Mutex<Breaker>>, host_manager: Arc<Mutex<ProxyHolder<HostManager>>>) -> Self {
         self.breaker = Some(breaker);
+        self.host_manager = Some(host_manager);
         self
     }
 
