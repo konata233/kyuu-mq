@@ -2,7 +2,7 @@ use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 use crate::mq::protocol::proto::DataHead;
-use crate::mq::protocol::protobase::Deserialize;
+use crate::mq::protocol::protobase::{Deserialize, Serialize};
 use crate::mq::protocol::raw::{Raw, RawCommand, RawData, RawMessage};
 use crate::mq::routing::key::RoutingKey;
 use std::cell::RefCell;
@@ -12,6 +12,7 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use crate::mq::host::vhost::VirtualHost;
 
 pub struct PhysicalConnection {
     pub local_addr: SocketAddr,
@@ -155,6 +156,7 @@ impl PhysicalConnection {
                     }
 
                     let size = u64::from(head.slice_size);
+                    // note that the head is not included when calculating 'count'.
                     let count = u64::from(head.slice_count) ;
 
                     let mut channel_manager = self.channel_manager.borrow_mut();
@@ -193,9 +195,10 @@ impl PhysicalConnection {
                     }
 
                     if completed {
-                        // todo: handle data; read data from buffer, send to router. deal with commands & normal msg
+                        // always remember that the last value of RoutingKey is the name of the Queue.
                         let buf = channel.read_buffer();
                         let raw = self.process(&head, buf);
+                        let host = VirtualHost::new(raw.virtual_host.clone());
 
                         let result = self.manager_proxy
                             .clone()
@@ -208,7 +211,37 @@ impl PhysicalConnection {
                             .borrow_mut()
                             .send_raw_data(raw);
 
-                        // todo: send feedback to remote host.
+                        if let Some(feedback) = result {
+                            let mut buffer = feedback.content;
+                            if buffer.len() % 256 != 0 {
+                                dbg!("buffer size not aligned to 256 bytes!", buffer.len());
+                                let align = 256 - buffer.len() % 256;
+                                for _ in 0..align {
+                                    buffer.push(0u8);
+                                }
+                            }
+
+                            // send feedback.
+                            let channel = head.channel.clone();
+                            let slice_count = buffer.len() / 256;
+                            let data_head = DataHead::new(
+                                host,
+                                channel,
+                                [0u8; 4],
+                                [0u8; 24],
+                                [0u8; 128],
+                                slice_count as u32,
+                                SLICE_SIZE as u32,
+                                0,
+                                0
+                            );
+                            let mut head_serialized = data_head.serialize_vec();
+                            head_serialized.append(&mut buffer);
+                            let concatenated = head_serialized;
+                            self.stream.borrow_mut().write_all(concatenated.as_slice()).unwrap();
+                            dbg!("feedback sent!");
+                            dbg!(&concatenated);
+                        }
                     }
                 }
                 Err(e) => {

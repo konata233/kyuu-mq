@@ -62,6 +62,7 @@ impl VirtualHost {
 
     pub fn process_incoming(&mut self, raw: RawData) -> Option<QueueObject> {
         // todo: implement advanced routing: * # ...
+        // always remember that the last value of RoutingKey is the name of the Queue.
         let routing = raw.routing_key;
         let routing_copied = routing.clone();
 

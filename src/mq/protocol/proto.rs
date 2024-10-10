@@ -58,6 +58,11 @@ impl DataHead {
 
 impl Serialize<256> for DataHead {
     fn serialize(&self) -> [u8; 256] {
+        let serialized = self.serialize_vec();
+        <[u8; 256]>::try_from(serialized).unwrap()
+    }
+
+    fn serialize_vec(&self) -> Vec<u8> {
         let mut serialized = vec![];
         serialized.append(&mut self.virtual_host.to_vec());
         serialized.append(&mut self.channel.to_vec());
@@ -74,7 +79,7 @@ impl Serialize<256> for DataHead {
         serialized.append(&mut self.msg_sign.to_le_bytes().to_vec());
         serialized.append(&mut self.ack.to_le_bytes().to_vec());
         serialized.append(&mut self.reserved.to_vec());
-        <[u8; 256]>::try_from(serialized).unwrap()
+        serialized
     }
 }
 
@@ -160,6 +165,11 @@ impl Serialize<96> for Acknowledge {
         serialized.append(&mut self.reserved.to_vec());
         <[u8; 96]>::try_from(serialized).unwrap()
     }
+
+    fn serialize_vec(&self) -> Vec<u8> {
+        // todo: not implemented!!
+        Vec::new()
+    }
 }
 
 impl Deserialize<96> for Acknowledge {
@@ -209,6 +219,11 @@ impl Serialize<512> for Data {
         serialized.append(&mut self.channel.to_vec());
         serialized.append(&mut self.data.to_vec());
         <[u8; 512]>::try_from(serialized).unwrap()
+    }
+
+    fn serialize_vec(&self) -> Vec<u8> {
+        // todo: not implemented!!
+        Vec::new()
     }
 }
 
