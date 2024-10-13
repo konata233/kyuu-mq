@@ -135,6 +135,7 @@ impl VirtualHost {
                 }
             }
         }
-        Some(QueueObject::new(&host, String::from("success!").into_bytes()))
+        None
+        // Some(QueueObject::new(&host, String::from("success!").into_bytes()))
     }
 }
