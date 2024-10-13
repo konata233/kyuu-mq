@@ -145,13 +145,14 @@ impl PhysicalConnection {
     }
 
     pub fn listen(&self) -> Result<(), Box<dyn Error>> {
+
         'listen: loop {
             let mut buf = [0u8; 256];
             self.stream.borrow_mut().set_nodelay(false)?;
             let n = self.stream.borrow_mut().read_exact(&mut buf);
             match n {
                 Ok(_) => {
-                    dbg!("conn established!");
+                    dbg!("incoming transmission!");
                     self.stream.borrow_mut().flush().unwrap_or(());
 
                     let head = DataHead::deserialize(buf);
@@ -173,7 +174,7 @@ impl PhysicalConnection {
                     channel.set_receiving(u64::from(size) * u64::from(count));
                     // slice1(data_head, data[size]), slice2(data_head, data[size]), ...
 
-                    let mut completed = false;
+                    let mut completed = false || size * count == 0; // if the package doesn't have body.
                     const SLICE_SIZE: u64 = 256;
                     dbg!(size, count);
                     for i in 0..(size * count / SLICE_SIZE) {
@@ -255,7 +256,24 @@ impl PhysicalConnection {
                             let concatenated = head_serialized;
                             self.stream.borrow_mut().write_all(concatenated.as_slice()).unwrap();
                             dbg!("feedback sent!");
-                            dbg!(&concatenated);
+                            //dbg!(&concatenated);
+                        }
+                    }
+
+                    let mut channel_name = channel.name.clone();
+                    let command = String::from_utf8(head.command.to_vec()).unwrap();
+                    drop(channel_manager);
+
+                    // todo: (IMPORTANT) add logic for closing the channel using attr 'command'
+                    let cmd = command.to_uppercase().as_str().trim_end_matches("\0").to_string();
+                    dbg!(&cmd);
+                    match cmd.as_str() {
+                        "CLOSE-CH" => {
+                            dbg!("close channel");
+                            self.channel_manager.borrow_mut().remove(channel_name.as_str());
+                        }
+                        _ => {
+                            dbg!("nop(cmd)");
                         }
                     }
                 }

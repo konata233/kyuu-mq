@@ -82,24 +82,24 @@ impl VirtualHost {
                     match cmd {
                         RawCommand::NewQueue(data) => {
                             dbg!("new queue");
-                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
-                            exc[0].add_exchange(queue_name);
+                            let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
+                            exc[0].add_queue(&queue_name);
                         }
                         RawCommand::NewExchange(data) => {
                             dbg!("new exchange");
-                            let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
+                            let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].add_exchange(exchange_name);
                         }
                         RawCommand::NewBinding(_) => {
                             dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
-                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
+                            let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].remove_queue(queue_name);
                         }
                         RawCommand::DropExchange(data) => {
                             dbg!("drop exchange");
-                            let exchange_name = String::from_utf8(data).unwrap().trim().to_string();
+                            let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].remove_exchange(exchange_name);
                         }
                         RawCommand::DropBinding(_) => {
@@ -114,16 +114,16 @@ impl VirtualHost {
                     dbg!("message");
                     match data {
                         RawMessage::Push(data) => {
+                            dbg!("push");
                             exc[0].get_queue(&queue_name)?.lock()
                                 .unwrap()
                                 .push_back(QueueObject::new(&self.name, data))
                         },
                         RawMessage::Fetch(data) => {
-                            let queue_name = String::from_utf8(data).unwrap().trim().to_string();
-                            let obj = exc[0].get_queue(&queue_name)?.lock()
+                            dbg!("fetch");
+                            return exc[0].get_queue(&queue_name)?.lock()
                                 .unwrap()
-                                .pop_front()?;
-                            return Some(obj)
+                                .pop_front();
                         }
                         RawMessage::Nop => {
                             dbg!("nop");

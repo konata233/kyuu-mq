@@ -78,6 +78,10 @@ impl Breaker {
     pub fn listen(&mut self) -> Result<(), ()> {
         for incoming in self.tcp_listener.incoming() {
             if let Ok(stream) = incoming {
+                if stream.peer_addr().unwrap() == stream.local_addr().unwrap() {
+                    continue;
+                }
+                dbg!("new connection");
                 let conn = PhysicalConnectionFactory::new()
                     .set_manager_proxy(self.physical_connection_manager.clone())
                     .set_stream(stream)
