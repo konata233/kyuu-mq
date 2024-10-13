@@ -78,6 +78,8 @@ impl Breaker {
     pub fn listen(&mut self) -> Result<(), ()> {
         for incoming in self.tcp_listener.incoming() {
             if let Ok(stream) = incoming {
+                // Note: this is a hack to prevent self-connection
+                // in the meantime, this hack is just temporary.
                 if stream.peer_addr().unwrap() == stream.local_addr().unwrap() {
                     continue;
                 }
