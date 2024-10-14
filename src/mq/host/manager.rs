@@ -47,7 +47,13 @@ impl HostManager {
         let io_type = &raw.io_type;
 
         if let Some(vhost) = vhost {
-            match io_type {
+            vhost
+                .read()
+                .unwrap()
+                .process_incoming(raw)
+
+            // todo: I see no difference whether to use read() or write().
+            /*match io_type {
                 IOType::Read => {
                     vhost.read()
                         .unwrap()
@@ -58,7 +64,7 @@ impl HostManager {
                         .unwrap()
                         .process_incoming(raw)
                 }
-            }
+            }*/
         } else {
             None
         }

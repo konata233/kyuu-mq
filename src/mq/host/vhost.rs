@@ -12,9 +12,11 @@ pub struct VirtualHost {
 
 impl VirtualHost {
     pub fn new(name: String) -> VirtualHost {
+        let exchange = Arc::from(RwLock::from(Exchange::new(String::from("mq-root"))));
+        exchange.write().unwrap().init(exchange.clone());
         VirtualHost {
             name,
-            base_exchange: Arc::from(RwLock::from(Exchange::new(String::from("mq-root")))),
+            base_exchange: exchange,
         }
     }
 
@@ -58,20 +60,6 @@ impl VirtualHost {
             exc[0].write().unwrap().remove_queue(name);
         }
         self
-    }
-
-    pub fn process_incoming_readonly(&self, raw: RawData) -> Option<QueueObject> {
-        let routing = raw.routing_key;
-        let routing_copied = routing.clone();
-        let host = raw.virtual_host.trim_end_matches("\0").to_string();
-
-        let queue_name = match routing {
-            RoutingKey::Direct(key) => key[3].clone(),
-            RoutingKey::Topic(key) => key[3].clone(),
-            RoutingKey::Fanout(key) => key[3].clone(),
-        };
-
-        let exchange = self.base_exchange.read().unwrap().walk_readonly(routing_copied, 0);
     }
 
     pub fn process_incoming(&self, raw: RawData) -> Option<QueueObject> {
@@ -129,7 +117,11 @@ impl VirtualHost {
                     match data {
                         RawMessage::Push(data) => {
                             dbg!("push");
-                            exc[0].write().unwrap().get_queue(&queue_name)?.write()
+                            exc[0]
+                                .read()
+                                .unwrap()
+                                .get_queue(&queue_name)?
+                                .write()
                                 .unwrap()
                                 .push_back(QueueObject::new(&self.name, data))
                         },
@@ -139,9 +131,10 @@ impl VirtualHost {
                                 .read()
                                 .unwrap()
                                 .get_queue(&queue_name)?
-                                .read()
+                                .write()
                                 .unwrap()
                                 .pop_front();
+                            // the 'write' for queue is temporary. but I have no idea how to optimize it.
                         }
                         RawMessage::Nop => {
                             dbg!("nop");

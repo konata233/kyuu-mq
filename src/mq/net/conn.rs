@@ -238,7 +238,14 @@ impl PhysicalConnection {
                         let host = VirtualHost::new(raw.virtual_host.clone());
 
                         let io_type = &raw.io_type;
-                        let result = match io_type {
+                        let result = self.get_host_manager_proxy(io_type)
+                            .read()
+                            .unwrap()
+                            .send_raw_to_host(raw);
+
+                        // todo: I see no difference whether to use read() or write().
+                        // but that remains to be tested.
+                        /*match io_type {
                             IOType::Read => {
                                 self.get_host_manager_proxy(io_type)
                                     .read()
@@ -251,7 +258,7 @@ impl PhysicalConnection {
                                     .unwrap()
                                     .send_raw_to_host(raw)
                             }
-                        };
+                        };*/
 
                         // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
                         if let Some(feedback) = result {
