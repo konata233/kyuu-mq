@@ -22,9 +22,13 @@ impl Exchange {
     }
 
     pub fn add_exchange(&mut self, name: String) -> &mut Self {
-        let exc_ref = Arc::from(RwLock::from(Exchange::new(name.clone())));
-        exc_ref.write().unwrap().init(exc_ref.clone());
-        self.lower_exchange.insert(name, exc_ref.clone());
+        if !self.lower_exchange.contains_key(&name) {
+            let exc_ref = Arc::from(RwLock::from(Exchange::new(name.clone())));
+            exc_ref.write().unwrap().init(exc_ref.clone());
+            self.lower_exchange.insert(name, exc_ref.clone());
+        } else {
+            println!("[mq] Exchange already exists: {}", name)
+        }
         self
     }
 

@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
 use crate::mq::queue::qbase::Queue;
-use crate::mq::queue::queue_object::QueueObject;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 pub struct QueueManager {
     queues: HashMap<String, Arc<RwLock<Queue>>>
@@ -15,9 +14,13 @@ impl QueueManager {
     }
 
     pub fn add(&mut self, name: &String) {
-        let q = Queue::new(name);
-        let q_ref = Arc::new(RwLock::new(q));
-        self.queues.insert(name.clone(), q_ref.clone());
+        if !self.queues.contains_key(name) {
+            let q = Queue::new(name);
+            let q_ref = Arc::new(RwLock::new(q));
+            self.queues.insert(name.clone(), q_ref.clone());
+        } else {
+            println!("[mq] queue already exists: {name}")
+        }
     }
 
     pub fn get(&self, name: &String) -> Option<Arc<RwLock<Queue>>> {
