@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::Shutdown;
 use std::ops::DerefMut;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use crate::mq::breaker::core::Breaker;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
@@ -14,7 +14,7 @@ use crate::mq::queue::queue_object::QueueObject;
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
     connections: Vec<Arc<Mutex<PhysicalConnection>>>,
-    pub host_manager: Option<Arc<Mutex<ProxyHolder<HostManager>>>>
+    pub host_manager: Option<Arc<RwLock<HostManager>>>
 }
 
 impl PhysicalConnectionManager {
@@ -26,7 +26,7 @@ impl PhysicalConnectionManager {
         }
     }
 
-    pub fn init(mut self, breaker: Arc<Mutex<Breaker>>, host_manager: Arc<Mutex<ProxyHolder<HostManager>>>) -> Self {
+    pub fn init(mut self, breaker: Arc<Mutex<Breaker>>, host_manager: Arc<RwLock<HostManager>>) -> Self {
         self.breaker = Some(breaker);
         self.host_manager = Some(host_manager);
         self

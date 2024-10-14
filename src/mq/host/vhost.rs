@@ -3,41 +3,41 @@ use crate::mq::queue::qbase::Queue;
 use crate::mq::queue::queue_object::QueueObject;
 use crate::mq::routing::exchange::Exchange;
 use crate::mq::routing::key::RoutingKey;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct VirtualHost {
     pub name: String,
-    base_exchange: Exchange
+    base_exchange: Arc<RwLock<Exchange>>
 }
 
 impl VirtualHost {
     pub fn new(name: String) -> VirtualHost {
         VirtualHost {
             name,
-            base_exchange: Exchange::new(String::from("mq-root")),
+            base_exchange: Arc::from(RwLock::from(Exchange::new(String::from("mq-root")))),
         }
     }
 
     pub fn add_exchange(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
-        let base = self.base_exchange.walk(routing_key, 0);
+        let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
         if let Some(mut exc) = base {
-            exc[0].add_exchange(name);
+            exc[0].write().unwrap().add_exchange(name);
         }
         self
     }
 
     pub fn add_queue(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
-        let base = self.base_exchange.walk(routing_key, 0);
+        let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
         if let Some(mut exc) = base {
-            exc[0].add_queue(&name);
+            exc[0].write().unwrap().add_queue(&name);
         }
         self
     }
 
-    pub fn get_queue(&mut self, name: &String, routing_key: RoutingKey) -> Option<Arc<Mutex<Queue>>> {
-        let base = self.base_exchange.walk(routing_key, 0);
-        if let Some(mut exc) = base {
-            exc.get_mut(0)?.get_queue(name)
+    pub fn get_queue(&self, name: &String, routing_key: RoutingKey) -> Option<Arc<RwLock<Queue>>> {
+        let base = self.base_exchange.read().unwrap().walk_readonly(routing_key, 0);
+        if let Some(exc) = base {
+            exc.get(0)?.read().unwrap().get_queue(name)
         } else {
             None
         }
@@ -45,22 +45,36 @@ impl VirtualHost {
 
 
     pub fn drop_exchange(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
-        let base = self.base_exchange.walk(routing_key, 0);
+        let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
         if let Some(mut exc) = base {
-            exc[0].remove_exchange(name);
+            exc[0].write().unwrap().remove_exchange(name);
         }
         self
     }
 
     pub fn drop_queue(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
-        let base = self.base_exchange.walk(routing_key, 0);
+        let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
         if let Some(mut exc) = base {
-            exc[0].remove_queue(name);
+            exc[0].write().unwrap().remove_queue(name);
         }
         self
     }
 
-    pub fn process_incoming(&mut self, raw: RawData) -> Option<QueueObject> {
+    pub fn process_incoming_readonly(&self, raw: RawData) -> Option<QueueObject> {
+        let routing = raw.routing_key;
+        let routing_copied = routing.clone();
+        let host = raw.virtual_host.trim_end_matches("\0").to_string();
+
+        let queue_name = match routing {
+            RoutingKey::Direct(key) => key[3].clone(),
+            RoutingKey::Topic(key) => key[3].clone(),
+            RoutingKey::Fanout(key) => key[3].clone(),
+        };
+
+        let exchange = self.base_exchange.read().unwrap().walk_readonly(routing_copied, 0);
+    }
+
+    pub fn process_incoming(&self, raw: RawData) -> Option<QueueObject> {
         // todo: implement advanced routing: * # ...
         // always remember that the last value of RoutingKey is the name of the Queue.
 
@@ -75,7 +89,7 @@ impl VirtualHost {
             RoutingKey::Fanout(key) => key[3].clone(),
         };
 
-        let exchange = self.base_exchange.walk(routing_copied, 0);
+        let exchange = self.base_exchange.write().unwrap().walk(routing_copied, 0);
         if let Some(mut exc) = exchange {
             match raw.raw {
                 Raw::Command(cmd) => {
@@ -83,24 +97,24 @@ impl VirtualHost {
                         RawCommand::NewQueue(data) => {
                             dbg!("new queue");
                             let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
-                            exc[0].add_queue(&queue_name);
+                            exc[0].write().unwrap().add_queue(&queue_name);
                         }
                         RawCommand::NewExchange(data) => {
                             dbg!("new exchange");
                             let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
-                            exc[0].add_exchange(exchange_name);
+                            exc[0].write().unwrap().add_exchange(exchange_name);
                         }
                         RawCommand::NewBinding(_) => {
                             dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
                             let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
-                            exc[0].remove_queue(queue_name);
+                            exc[0].write().unwrap().remove_queue(queue_name);
                         }
                         RawCommand::DropExchange(data) => {
                             dbg!("drop exchange");
                             let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
-                            exc[0].remove_exchange(exchange_name);
+                            exc[0].write().unwrap().remove_exchange(exchange_name);
                         }
                         RawCommand::DropBinding(_) => {
                             dbg!("drop binding");
@@ -115,13 +129,17 @@ impl VirtualHost {
                     match data {
                         RawMessage::Push(data) => {
                             dbg!("push");
-                            exc[0].get_queue(&queue_name)?.lock()
+                            exc[0].write().unwrap().get_queue(&queue_name)?.write()
                                 .unwrap()
                                 .push_back(QueueObject::new(&self.name, data))
                         },
                         RawMessage::Fetch(data) => {
                             dbg!("fetch");
-                            return exc[0].get_queue(&queue_name)?.lock()
+                            return exc[0]
+                                .read()
+                                .unwrap()
+                                .get_queue(&queue_name)?
+                                .read()
                                 .unwrap()
                                 .pop_front();
                         }

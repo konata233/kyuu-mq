@@ -1,7 +1,7 @@
 use crate::mq::net::factory::PhysicalConnectionFactory;
 use crate::mq::net::manager::PhysicalConnectionManager;
 use std::net::{TcpListener, ToSocketAddrs};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
@@ -11,8 +11,8 @@ use crate::mq::queue::queue_object::QueueObject;
 
 pub struct Breaker {
     tcp_listener: TcpListener,
-    host_manager: Option<Arc<Mutex<ProxyHolder<HostManager>>>>,
-    physical_connection_manager: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>,
+    host_manager: Option<Arc<RwLock<HostManager>>>,
+    physical_connection_manager: Option<Arc<RwLock<PhysicalConnectionManager>>>,
 }
 
 impl Breaker {
@@ -26,8 +26,8 @@ impl Breaker {
 
     pub fn init_managers(&mut self, self_ref: Arc<Mutex<Breaker>>) {
         let host_manager = Arc::new(
-            Mutex::new(
-                ProxyHolder::new(HostManager::new().init(self_ref.clone())).init()
+            RwLock::new(
+                HostManager::new().init(self_ref.clone())
             )
         );
         self.host_manager = Some(
@@ -36,8 +36,8 @@ impl Breaker {
 
         self.physical_connection_manager = Some(
             Arc::new(
-                Mutex::new(
-                    ProxyHolder::new(PhysicalConnectionManager::new().init(self_ref.clone(), host_manager.clone())).init()
+                RwLock::new(
+                    PhysicalConnectionManager::new().init(self_ref.clone(), host_manager.clone())
                 )
             )
         );
@@ -54,24 +54,16 @@ impl Breaker {
 
     pub fn send_raw_to_host(&mut self, data: RawData) -> Option<QueueObject> {
         self.host_manager.as_mut()?
-            .lock()
+            .write()
             .unwrap()
-            .get()
-            .lock()
-            .unwrap()
-            .borrow_mut()
             .send_raw_to_host(data)
     }
 
     pub fn stop_worker(&mut self) {
         self.physical_connection_manager.as_mut()
             .unwrap()
-            .lock()
+            .write()
             .unwrap()
-            .get()
-            .lock()
-            .unwrap()
-            .borrow_mut()
             .close();
     }
 
@@ -90,12 +82,8 @@ impl Breaker {
                     .fetch();
                 self.physical_connection_manager.as_mut()
                     .unwrap()
-                    .lock()
+                    .write()
                     .unwrap()
-                    .get()
-                    .lock()
-                    .unwrap()
-                    .get_mut()
                     .add(conn?);
             }
         }
@@ -121,12 +109,8 @@ impl Core {
         let default_name = String::from("MQ_HOST");
         self_ref.lock().unwrap().host_manager.clone()
             .unwrap()
-            .lock()
+            .write()
             .unwrap()
-            .get()
-            .lock()
-            .unwrap()
-            .borrow_mut()
             .add(default_name.clone(), VirtualHost::new(default_name));
 
         Core {

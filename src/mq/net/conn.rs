@@ -3,15 +3,16 @@ use crate::mq::net::chan::Channel;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 use crate::mq::protocol::proto::DataHead;
 use crate::mq::protocol::protobase::{Deserialize, Serialize};
-use crate::mq::protocol::raw::{Raw, RawCommand, RawData, RawMessage};
+use crate::mq::protocol::raw::{IOType, Raw, RawCommand, RawData, RawMessage};
 use crate::mq::routing::key::RoutingKey;
 use std::cell::RefCell;
 use std::error::Error;
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
+use crate::mq::host::manager::HostManager;
 use crate::mq::host::vhost::VirtualHost;
 
 pub struct PhysicalConnection {
@@ -21,7 +22,7 @@ pub struct PhysicalConnection {
     pub stream: RefCell<TcpStream>,
     pub closed: RefCell<bool>,
 
-    pub manager_proxy: Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>,
+    pub manager_proxy: Arc<RwLock<PhysicalConnectionManager>>,
     pub channel_manager: RefCell<ChannelManager>
 }
 
@@ -37,6 +38,8 @@ impl PhysicalConnection {
     }
 
     fn process(&self, data_head: &DataHead, buffer: Vec<u8>) -> RawData {
+        let mut io_type = IOType::Write;
+
         let channel = String::from_utf8(data_head.channel.clone().to_vec())
             .unwrap()
             .trim_end_matches("\0") // IMPORTANT!!
@@ -58,6 +61,7 @@ impl PhysicalConnection {
                     }
                     1u8 => {
                         dbg!("normal fetch");
+                        io_type = IOType::Read;
                         RawMessage::Fetch(buffer)
                     }
                     _ => {
@@ -140,7 +144,33 @@ impl PhysicalConnection {
             raw,
             channel: channel.clone(),
             virtual_host: virtual_host.clone(),
-            routing_key: routing
+            routing_key: routing,
+            io_type
+        }
+    }
+
+    fn get_host_manager_proxy(&self, io_type: &IOType) -> Arc<RwLock<HostManager>> {
+        match io_type {
+            IOType::Read => {
+                dbg!("read");
+                self.manager_proxy
+                    .clone()
+                    .read()
+                    .unwrap()
+                    .host_manager
+                    .clone()
+                    .unwrap()
+            }
+            IOType::Write => {
+                dbg!("write");
+                self.manager_proxy
+                    .clone()
+                    .write()
+                    .unwrap()
+                    .host_manager
+                    .clone()
+                    .unwrap()
+            }
         }
     }
 
@@ -207,25 +237,22 @@ impl PhysicalConnection {
                         let raw = self.process(&head, buf);
                         let host = VirtualHost::new(raw.virtual_host.clone());
 
-                        let result = self.manager_proxy
-                            .clone()
-                            .lock()
-                            .unwrap()
-                            .get()
-                            .clone()
-                            .lock()
-                            .unwrap()
-                            .borrow_mut()
-                            .host_manager
-                            .clone()
-                            .unwrap()
-                            .lock()
-                            .unwrap()
-                            .get()
-                            .lock()
-                            .unwrap()
-                            .borrow_mut()
-                            .send_raw_to_host(raw);
+                        let io_type = &raw.io_type;
+                        let result = match io_type {
+                            IOType::Read => {
+                                self.get_host_manager_proxy(io_type)
+                                    .read()
+                                    .unwrap()
+                                    .send_raw_to_host(raw)
+                            }
+                            IOType::Write => {
+                                self.get_host_manager_proxy(io_type)
+                                    .write()
+                                    .unwrap()
+                                    .send_raw_to_host(raw)
+                            }
+                        };
+
                         // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
                         if let Some(feedback) = result {
                             let mut buffer = feedback.content;

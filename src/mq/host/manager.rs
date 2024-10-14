@@ -1,14 +1,14 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use crate::mq::breaker::core::{Breaker, Core};
 use crate::mq::host::vhost::VirtualHost;
-use crate::mq::protocol::raw::RawData;
+use crate::mq::protocol::raw::{IOType, RawData};
 use crate::mq::queue::queue_object::QueueObject;
 
 pub struct HostManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
-    virtual_hosts: HashMap<String, Arc<Mutex<RefCell<VirtualHost>>>>
+    virtual_hosts: HashMap<String, Arc<RwLock<VirtualHost>>>
 }
 
 impl HostManager {
@@ -25,18 +25,18 @@ impl HostManager {
     }
 
     pub fn add(&mut self, name: String, vhost: VirtualHost) {
-        self.virtual_hosts.insert(name, Arc::new(Mutex::new(RefCell::from(vhost))));
+        self.virtual_hosts.insert(name, Arc::new(RwLock::new(vhost)));
     }
 
-    pub fn get(&mut self, name: String) -> Option<&mut Arc<Mutex<RefCell<VirtualHost>>>> {
+    pub fn get(&mut self, name: String) -> Option<&mut Arc<RwLock<VirtualHost>>> {
         self.virtual_hosts.get_mut(&name)
     }
 
-    pub fn remove(&mut self, name: String) -> Option<Arc<Mutex<RefCell<VirtualHost>>>> {
+    pub fn remove(&mut self, name: String) -> Option<Arc<RwLock<VirtualHost>>> {
         self.virtual_hosts.remove(&name)
     }
 
-    pub fn get_all(&self) -> Vec<Arc<Mutex<RefCell<VirtualHost>>>> {
+    pub fn get_all(&self) -> Vec<Arc<RwLock<VirtualHost>>> {
         self.virtual_hosts.values().cloned().collect()
     }
 
@@ -44,10 +44,21 @@ impl HostManager {
         //println!("!!");
         let host_name = raw.virtual_host.trim().to_string();
         let vhost = self.virtual_hosts.get(&host_name).cloned();
+        let io_type = &raw.io_type;
+
         if let Some(vhost) = vhost {
-            vhost.lock()
-                .unwrap()
-                .borrow_mut().process_incoming(raw)
+            match io_type {
+                IOType::Read => {
+                    vhost.read()
+                        .unwrap()
+                        .process_incoming(raw)
+                }
+                IOType::Write => {
+                    vhost.write()
+                        .unwrap()
+                        .process_incoming(raw)
+                }
+            }
         } else {
             None
         }

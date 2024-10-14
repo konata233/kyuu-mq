@@ -1,9 +1,9 @@
 use std::cell::RefCell;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct ProxyHolder<T> {
     obj: Option<T>,
-    obj_ref: Option<Arc<Mutex<RefCell<T>>>>
+    obj_ref: Option<Arc<RwLock<RefCell<T>>>>
 }
 
 impl <T> ProxyHolder<T> {
@@ -15,12 +15,12 @@ impl <T> ProxyHolder<T> {
     }
 
     pub fn init(mut self) -> ProxyHolder<T> {
-        self.obj_ref = Some(Arc::from(Mutex::from(RefCell::from(self.obj.take().unwrap()))));
+        self.obj_ref = Some(Arc::from(RwLock::from(RefCell::from(self.obj.take().unwrap()))));
         self.obj = None;
         self
     }
 
-    pub fn get(&mut self) -> Arc<Mutex<RefCell<T>>> {
+    pub fn get(&mut self) -> Arc<RwLock<RefCell<T>>> {
         self.obj_ref.as_mut()
             .unwrap()
             .clone()

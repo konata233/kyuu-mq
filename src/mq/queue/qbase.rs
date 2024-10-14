@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 pub struct Queue {
     name: String,
-    data: Arc<Mutex<Vec<QueueObject>>>,
+    data: Vec<QueueObject>,
     len: u64
 }
 
@@ -11,13 +11,13 @@ impl Queue {
     pub fn new(name: &String) -> Self {
         Queue {
             name: String::from(name),
-            data: Arc::new(Mutex::new(Vec::new())),
+            data: Vec::new(),
             len: 0
         }
     }
 
     pub fn push_back(&mut self, value: QueueObject) {
-        let mut data = self.data.lock().unwrap();
+        let mut data = &mut self.data;
         data.push(value);
         self.len += 1;
     }
@@ -26,7 +26,7 @@ impl Queue {
         if self.is_empty() {
             return None;
         }
-        let mut data = self.data.lock().unwrap();
+        let mut data = &mut self.data;
         self.len -= 1;
         Some(data.remove(0))
     }
@@ -35,7 +35,7 @@ impl Queue {
         if self.is_empty() {
             return None;
         }
-        let mut data = self.data.lock().unwrap();
+        let mut data = &self.data;
         Some(data[0].clone())
     }
 
@@ -44,6 +44,6 @@ impl Queue {
     }
 
     pub fn clear(&mut self) {
-        self.data.lock().unwrap().clear();
+        self.data.clear();
     }
 }

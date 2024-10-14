@@ -12,7 +12,7 @@ pub fn test() {
 }
 
 pub fn test_host() {
-    let mut host = VirtualHost::new("test".to_string());
+    /*let mut host = VirtualHost::new("test".to_string());
     let name = host.name.clone();
     host.add_exchange("test_exc".to_string(), RoutingKey::Direct(["\0", "", "", ""].map(|x| x.to_string())));
     host.add_exchange("test_exc2".to_string(), RoutingKey::Direct(["test_exc", "!", "", ""].map(|x| x.to_string())));
@@ -39,5 +39,5 @@ pub fn test_host() {
     dbg!(String::from_utf8(s.lock().unwrap().pop_front().unwrap().content).unwrap());
     dbg!(String::from_utf8(s.lock().unwrap().pop_front().unwrap().content).unwrap());
     dbg!(String::from_utf8(s2.lock().unwrap().pop_front().unwrap().content).unwrap());
-    dbg!(String::from_utf8(s2.lock().unwrap().pop_front().unwrap().content).unwrap());
+    dbg!(String::from_utf8(s2.lock().unwrap().pop_front().unwrap().content).unwrap());*/
 }

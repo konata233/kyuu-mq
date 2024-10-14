@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use crate::mq::net::conn::PhysicalConnection;
 use std::net::{SocketAddr, TcpStream};
-use std::sync::{Arc, Mutex, Condvar};
+use std::sync::{Arc, Mutex, Condvar, RwLock};
 use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 
@@ -9,7 +9,7 @@ pub struct PhysicalConnectionFactory {
     local: Option<SocketAddr>,
     remote: Option<SocketAddr>,
     stream: Option<TcpStream>,
-    manager_proxy: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>
+    manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>
 }
 
 impl PhysicalConnectionFactory {
@@ -22,7 +22,7 @@ impl PhysicalConnectionFactory {
         }
     }
 
-    pub fn set_manager_proxy(mut self, manager_proxy: Option<Arc<Mutex<ProxyHolder<PhysicalConnectionManager>>>>) -> Self {
+    pub fn set_manager_proxy(mut self, manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>) -> Self {
         self.manager_proxy = manager_proxy;
         self
     }

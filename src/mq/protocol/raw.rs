@@ -5,7 +5,14 @@ pub struct RawData {
     pub raw: Raw,
     pub channel: String,
     pub virtual_host: String,
-    pub routing_key: RoutingKey
+    pub routing_key: RoutingKey,
+    pub io_type: IOType
+}
+
+#[derive(Debug)]
+pub enum IOType {
+    Read,
+    Write
 }
 
 #[derive(Debug)]
