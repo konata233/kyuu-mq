@@ -1,5 +1,4 @@
 use crate::mq::queue::queue_object::QueueObject;
-use std::sync::{Arc, Mutex};
 
 pub struct Queue {
     name: String,
@@ -17,7 +16,7 @@ impl Queue {
     }
 
     pub fn push_back(&mut self, value: QueueObject) {
-        let mut data = &mut self.data;
+        let data = &mut self.data;
         data.push(value);
         self.len += 1;
     }
@@ -26,7 +25,7 @@ impl Queue {
         if self.is_empty() {
             return None;
         }
-        let mut data = &mut self.data;
+        let data = &mut self.data;
         self.len -= 1;
         Some(data.remove(0))
     }
@@ -35,7 +34,7 @@ impl Queue {
         if self.is_empty() {
             return None;
         }
-        let mut data = &self.data;
+        let data = &self.data;
         Some(data[0].clone())
     }
 

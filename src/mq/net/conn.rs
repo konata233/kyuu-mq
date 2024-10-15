@@ -1,4 +1,5 @@
-use crate::mq::common::proxy::ProxyHolder;
+use crate::mq::host::manager::HostManager;
+use crate::mq::host::vhost::VirtualHost;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
 use crate::mq::protocol::proto::DataHead;
@@ -12,8 +13,6 @@ use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
-use crate::mq::host::manager::HostManager;
-use crate::mq::host::vhost::VirtualHost;
 
 pub struct PhysicalConnection {
     pub local_addr: SocketAddr,
@@ -28,7 +27,7 @@ pub struct PhysicalConnection {
 
 impl PhysicalConnection {
 
-    pub fn launch(mut self) -> Arc<Mutex<PhysicalConnection>> {
+    pub fn launch(self) -> Arc<Mutex<PhysicalConnection>> {
         let s0 = Arc::new(Mutex::new(self));
         let s1 = s0.clone();
         thread::spawn(move || {
@@ -50,68 +49,68 @@ impl PhysicalConnection {
             .to_string();
 
         // match first byte of routing_mod as command type
-        let mut raw: Raw = match data_head.routing_mod[0] {
+        let raw: Raw = match data_head.routing_mod[0] {
             0u8 => {
-                dbg!("normal msg");
+                // dbg!("normal msg");
                 // match second byte of routing_mod as msg type
                 let msg: RawMessage = match data_head.routing_mod[1] {
                     0u8 => {
-                        dbg!("normal push");
+                        // dbg!("normal push");
                         RawMessage::Push(buffer)
                     }
                     1u8 => {
-                        dbg!("normal fetch");
+                        // dbg!("normal fetch");
                         io_type = IOType::Read;
                         RawMessage::Fetch(buffer)
                     }
                     _ => {
-                        dbg!("nop");
+                        // dbg!("nop");
                         RawMessage::Nop
                     },
                 };
                 Raw::Message(msg)
             }
             1u8 => {
-                dbg!("command");
+                // dbg!("command");
                 // match second byte of routing_mod as command type
                 let cmd: RawCommand = match data_head.routing_mod[1] {
                     0u8 => {
-                        dbg!("new queue");
+                        // dbg!("new queue");
                         RawCommand::NewQueue(buffer)
                     },
                     1u8 => {
-                        dbg!("new exchange");
+                        // dbg!("new exchange");
                         RawCommand::NewExchange(buffer)
                     },
                     2u8 => {
-                        dbg!("new binding");
+                        // dbg!("new binding");
                         RawCommand::NewBinding(buffer)
                     },
                     3u8 => {
-                        dbg!("drop queue");
+                        // dbg!("drop queue");
                         RawCommand::DropQueue(buffer)
                     },
                     4u8 => {
-                        dbg!("drop exchange");
+                        // dbg!("drop exchange");
                         RawCommand::DropExchange(buffer)
                     },
                     5u8 => {
-                        dbg!("drop binding");
+                        // dbg!("drop binding");
                         RawCommand::DropBinding(buffer)
                     },
                     _ => {
-                        dbg!("nop");
+                        // dbg!("nop");
                         RawCommand::Nop
                     }
                 };
                 Raw::Command(cmd)
             }
             _ => {
-                dbg!("nop");
+                // dbg!("nop");
                 Raw::Nop
             }
         };
-        // dbg!(&raw);
+        // // dbg!(&raw);
         
         let routing_arr = [
             String::from_utf8(data_head.route0.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
@@ -123,19 +122,19 @@ impl PhysicalConnection {
         // match third byte of routing_mod as routing type
         let routing: RoutingKey = match data_head.routing_mod[2] {
             0u8 => {
-                dbg!("direct");
+                // dbg!("direct");
                 RoutingKey::Direct(routing_arr)
             }
             1u8 => {
-                dbg!("topic");
+                // dbg!("topic");
                 RoutingKey::Topic(routing_arr)
             }
             2u8 => {
-                dbg!("fanout");
+                // dbg!("fanout");
                 RoutingKey::Fanout(routing_arr)
             },
             _ => {
-                dbg!("nop");
+                // dbg!("nop");
                 RoutingKey::Direct(routing_arr)
             },
         };
@@ -152,7 +151,7 @@ impl PhysicalConnection {
     fn get_host_manager_proxy(&self, io_type: &IOType) -> Arc<RwLock<HostManager>> {
         match io_type {
             IOType::Read => {
-                dbg!("read");
+                // dbg!("read");
                 self.manager_proxy
                     .clone()
                     .read()
@@ -162,7 +161,7 @@ impl PhysicalConnection {
                     .unwrap()
             }
             IOType::Write => {
-                dbg!("write");
+                // dbg!("write");
                 self.manager_proxy
                     .clone()
                     .write()
@@ -182,7 +181,7 @@ impl PhysicalConnection {
             let n = self.stream.borrow_mut().read_exact(&mut buf);
             match n {
                 Ok(_) => {
-                    dbg!("incoming transmission!");
+                    // dbg!("incoming transmission!");
                     self.stream.borrow_mut().flush().unwrap_or(());
 
                     let head = DataHead::deserialize(buf);
@@ -206,23 +205,23 @@ impl PhysicalConnection {
 
                     let mut completed = false || size * count == 0; // if the package doesn't have body.
                     const SLICE_SIZE: u64 = 256;
-                    dbg!(size, count);
-                    for i in 0..(size * count / SLICE_SIZE) {
+                    // dbg!(size, count);
+                    for _ in 0..(size * count / SLICE_SIZE) {
                         self.stream.borrow_mut().flush().unwrap_or(());
                         let mut buf = [0u8; SLICE_SIZE as usize];
                         'read: loop {
                             match self.stream.borrow_mut().read_exact(&mut buf) {
                                 Ok(_) => {
-                                    dbg!("read!", i);
-                                    dbg!("buf: ", String::from_utf8(buf.to_vec()).unwrap());
+                                    // dbg!("read!", i);
+                                    // dbg!("buf: ", String::from_utf8(buf.to_vec()).unwrap());
                                     completed = channel.write_buffer(Vec::from(&buf), SLICE_SIZE);
-                                    //dbg!(channel.peek_buffer().last().unwrap());
-                                    dbg!(channel.peek_buffer().len() / 256);
+                                    //// dbg!(channel.peek_buffer().last().unwrap());
+                                    // dbg!(channel.peek_buffer().len() / 256);
                                     break 'read;
                                 }
                                 Err(e) => {
                                     if e.kind() == UnexpectedEof {
-                                        dbg!("conn closed.");
+                                        // dbg!("conn closed.");
                                         self.closed.replace(true);
                                         break 'listen;
                                     }
@@ -264,7 +263,7 @@ impl PhysicalConnection {
                         if let Some(feedback) = result {
                             let mut buffer = feedback.content;
                             if buffer.len() % 256 != 0 {
-                                dbg!("buffer size not aligned to 256 bytes!", buffer.len());
+                                // dbg!("buffer size not aligned to 256 bytes!", buffer.len());
                                 let align = 256 - buffer.len() % 256;
                                 for _ in 0..align {
                                     buffer.push(0u8);
@@ -289,31 +288,31 @@ impl PhysicalConnection {
                             head_serialized.append(&mut buffer);
                             let concatenated = head_serialized;
                             self.stream.borrow_mut().write_all(concatenated.as_slice()).unwrap();
-                            dbg!("feedback sent!");
-                            //dbg!(&concatenated);
+                            // dbg!("feedback sent!");
+                            //// dbg!(&concatenated);
                         }
                     }
 
-                    let mut channel_name = channel.name.clone();
+                    let channel_name = channel.name.clone();
                     let command = String::from_utf8(head.command.to_vec()).unwrap();
                     drop(channel_manager);
 
                     // todo: (IMPORTANT) add logic for closing the channel using attr 'command'
                     let cmd = command.to_uppercase().as_str().trim_end_matches("\0").to_string();
-                    dbg!(&cmd);
+                    // dbg!(&cmd);
                     match cmd.as_str() {
                         "CLOSE-CH" => {
-                            dbg!("close channel");
+                            // dbg!("close channel");
                             self.channel_manager.borrow_mut().remove(channel_name.as_str());
                         }
                         _ => {
-                            dbg!("nop(cmd)");
+                            // dbg!("nop(cmd)");
                         }
                     }
                 }
                 Err(e) => {
                     if e.kind() == UnexpectedEof {
-                        dbg!("conn closed.");
+                        // dbg!("conn closed.");
                         self.closed.replace(true);
                         break 'listen;
                     }

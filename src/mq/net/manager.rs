@@ -1,15 +1,12 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::net::Shutdown;
-use std::ops::DerefMut;
-use std::sync::{Arc, Mutex, RwLock};
 use crate::mq::breaker::core::Breaker;
-use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::host::manager::HostManager;
 use crate::mq::net::chan::Channel;
 use crate::mq::net::conn::PhysicalConnection;
 use crate::mq::protocol::raw::RawData;
 use crate::mq::queue::queue_object::QueueObject;
+use std::collections::HashMap;
+use std::net::Shutdown;
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,

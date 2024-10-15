@@ -1,13 +1,12 @@
+use crate::mq::host::manager::HostManager;
+use crate::mq::host::vhost::VirtualHost;
 use crate::mq::net::factory::PhysicalConnectionFactory;
 use crate::mq::net::manager::PhysicalConnectionManager;
+use crate::mq::protocol::raw::RawData;
+use crate::mq::queue::queue_object::QueueObject;
 use std::net::{TcpListener, ToSocketAddrs};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
-use crate::mq::common::proxy::ProxyHolder;
-use crate::mq::host::manager::HostManager;
-use crate::mq::host::vhost::VirtualHost;
-use crate::mq::protocol::raw::RawData;
-use crate::mq::queue::queue_object::QueueObject;
 
 pub struct Breaker {
     tcp_listener: TcpListener,
@@ -97,7 +96,7 @@ pub struct Core {
 
 impl Core {
     pub fn new<A: ToSocketAddrs>(addr: A) -> Core {
-        let mut breaker = Breaker::new(addr);
+        let breaker = Breaker::new(addr);
 
         let self_ref = Arc::new(Mutex::new(breaker));
         self_ref.lock()

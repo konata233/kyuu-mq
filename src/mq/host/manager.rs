@@ -1,10 +1,9 @@
-use std::cell::RefCell;
+use crate::mq::breaker::core::Breaker;
+use crate::mq::host::vhost::VirtualHost;
+use crate::mq::protocol::raw::RawData;
+use crate::mq::queue::queue_object::QueueObject;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
-use crate::mq::breaker::core::{Breaker, Core};
-use crate::mq::host::vhost::VirtualHost;
-use crate::mq::protocol::raw::{IOType, RawData};
-use crate::mq::queue::queue_object::QueueObject;
 
 pub struct HostManager {
     breaker: Option<Arc<Mutex<Breaker>>>,

@@ -3,7 +3,7 @@ use crate::mq::queue::qbase::Queue;
 use crate::mq::queue::queue_object::QueueObject;
 use crate::mq::routing::exchange::Exchange;
 use crate::mq::routing::key::RoutingKey;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 pub struct VirtualHost {
     pub name: String,
@@ -22,7 +22,7 @@ impl VirtualHost {
 
     pub fn add_exchange(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
         let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
-        if let Some(mut exc) = base {
+        if let Some(exc) = base {
             exc[0].write().unwrap().add_exchange(name);
         }
         self
@@ -30,7 +30,7 @@ impl VirtualHost {
 
     pub fn add_queue(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
         let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
-        if let Some(mut exc) = base {
+        if let Some(exc) = base {
             exc[0].write().unwrap().add_queue(&name);
         }
         self
@@ -48,7 +48,7 @@ impl VirtualHost {
 
     pub fn drop_exchange(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
         let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
-        if let Some(mut exc) = base {
+        if let Some(exc) = base {
             exc[0].write().unwrap().remove_exchange(name);
         }
         self
@@ -56,7 +56,7 @@ impl VirtualHost {
 
     pub fn drop_queue(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
         let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
-        if let Some(mut exc) = base {
+        if let Some(exc) = base {
             exc[0].write().unwrap().remove_queue(name);
         }
         self
@@ -66,7 +66,7 @@ impl VirtualHost {
         // todo: implement advanced routing: * # ...
         // always remember that the last value of RoutingKey is the name of the Queue.
 
-        println!("incoming data: {:?}", raw);
+        println!("[mq] incoming data: {:?}", raw);
         let routing = raw.routing_key;
         let routing_copied = routing.clone();
         let host = raw.virtual_host.trim_end_matches("\0").to_string();
@@ -83,40 +83,40 @@ impl VirtualHost {
                 Raw::Command(cmd) => {
                     match cmd {
                         RawCommand::NewQueue(data) => {
-                            dbg!("new queue");
+                            // dbg!("new queue");
                             let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].write().unwrap().add_queue(&queue_name);
                         }
                         RawCommand::NewExchange(data) => {
-                            dbg!("new exchange");
+                            // dbg!("new exchange");
                             let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].write().unwrap().add_exchange(exchange_name);
                         }
                         RawCommand::NewBinding(_) => {
-                            dbg!("new binding");
+                            // dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
                             let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].write().unwrap().remove_queue(queue_name);
                         }
                         RawCommand::DropExchange(data) => {
-                            dbg!("drop exchange");
+                            // dbg!("drop exchange");
                             let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
                             exc[0].write().unwrap().remove_exchange(exchange_name);
                         }
                         RawCommand::DropBinding(_) => {
-                            dbg!("drop binding");
+                            // dbg!("drop binding");
                         }
                         RawCommand::Nop => {
-                            dbg!("nop");
+                            // dbg!("nop");
                         }
                     }
                 }
                 Raw::Message(data) => {
-                    dbg!("message");
+                    // dbg!("message");
                     match data {
                         RawMessage::Push(data) => {
-                            dbg!("push");
+                            // dbg!("push");
                             exc[0]
                                 .read()
                                 .unwrap()
@@ -126,7 +126,7 @@ impl VirtualHost {
                                 .push_back(QueueObject::new(&self.name, data))
                         },
                         RawMessage::Fetch(data) => {
-                            dbg!("fetch");
+                            // dbg!("fetch");
                             return exc[0]
                                 .read()
                                 .unwrap()
@@ -137,12 +137,12 @@ impl VirtualHost {
                             // the 'write' for queue is temporary. but I have no idea how to optimize it.
                         }
                         RawMessage::Nop => {
-                            dbg!("nop");
+                            // dbg!("nop");
                         }
                     }
                 }
                 Raw::Nop => {
-                    dbg!("nop");
+                    // dbg!("nop");
                 }
             }
         }

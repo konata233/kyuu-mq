@@ -1,5 +1,3 @@
-use crate::mq::host::vhost::VirtualHost;
-
 pub struct QueueObject {
     pub virtual_host: String,
     pub content: Vec<u8>

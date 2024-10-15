@@ -1,13 +1,12 @@
-use std::error::Error;
-use std::sync::{Arc, Condvar, Mutex};
-use std::{io, thread};
-use std::any::Any;
-use std::io::Write;
-use std::net::ToSocketAddrs;
-use std::thread::JoinHandle;
 use crate::mq::breaker;
 use crate::mq::common::context::RuntimeContext;
-use crate::test::test::test;
+use std::any::Any;
+use std::error::Error;
+use std::io::Write;
+use std::net::ToSocketAddrs;
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
+use std::{io, thread};
 
 // always remember that the last value of RoutingKey is the name of the Queue.
 // note that the \0 at the end of the strings must be trimmed using trim_end_matches() !!
@@ -31,7 +30,7 @@ fn construct_ctx() -> Result<RuntimeContext, Box<dyn Error>> {
     let port: u16 = port.trim().parse()?;
 
     let concatenated = format!("{}:{}", host, port);
-    println!("Starting server on {}", concatenated);
+    println!("[mq] starting server on {}", concatenated);
 
     Ok(RuntimeContext::new(host, port))
 }

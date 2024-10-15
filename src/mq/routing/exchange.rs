@@ -2,7 +2,7 @@ use crate::mq::queue::manager::QueueManager;
 use crate::mq::queue::qbase::Queue;
 use crate::mq::routing::key::RoutingKey;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 pub struct Exchange {
     name: String,
@@ -27,7 +27,7 @@ impl Exchange {
             exc_ref.write().unwrap().init(exc_ref.clone());
             self.lower_exchange.insert(name, exc_ref.clone());
         } else {
-            println!("[mq] Exchange already exists: {}", name)
+            println!("[mq] exchange already exists: {}", name)
         }
         self
     }
@@ -90,14 +90,14 @@ impl Exchange {
             return None;
         }
 
-        let mut r: [String; 4];
+        let r: [String; 4];
         let routing_cloned = routing.clone();
         match routing {
             RoutingKey::Direct(key) => r = key,
             RoutingKey::Topic(key) => r = key,
             RoutingKey::Fanout(key) => r = key,
         }
-        let mut next_key  = r[next].clone();
+        let next_key  = r[next].clone();
         if (&next_key).starts_with("\0") || next_key.is_empty() || next_key.starts_with("!") || next == 2 {
             Some(vec![self.self_ref.clone()?])
         } else if next_key.starts_with("*") {
@@ -116,14 +116,14 @@ impl Exchange {
             return None;
         }
 
-        let mut r: [String; 4];
+        let r: [String; 4];
         let routing_cloned = routing.clone();
         match routing {
             RoutingKey::Direct(key) => r = key,
             RoutingKey::Topic(key) => r = key,
             RoutingKey::Fanout(key) => r = key,
         }
-        let mut next_key  = r[next].clone();
+        let next_key  = r[next].clone();
         if (&next_key).starts_with("\0") || next_key.is_empty() || next_key.starts_with("!") || next == 2 {
             Some(vec![self.self_ref.clone()?])
         } else if next_key.starts_with("*") {

@@ -1,9 +1,8 @@
-use std::cell::RefCell;
 use crate::mq::net::conn::PhysicalConnection;
-use std::net::{SocketAddr, TcpStream};
-use std::sync::{Arc, Mutex, Condvar, RwLock};
-use crate::mq::common::proxy::ProxyHolder;
 use crate::mq::net::manager::{ChannelManager, PhysicalConnectionManager};
+use std::cell::RefCell;
+use std::net::{SocketAddr, TcpStream};
+use std::sync::{Arc, RwLock};
 
 pub struct PhysicalConnectionFactory {
     local: Option<SocketAddr>,
