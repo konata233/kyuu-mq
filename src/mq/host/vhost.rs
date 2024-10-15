@@ -66,7 +66,8 @@ impl VirtualHost {
         // todo: implement advanced routing: * # ...
         // always remember that the last value of RoutingKey is the name of the Queue.
 
-        println!("[mq] incoming data: {:?}", raw);
+        // println!("[mq] incoming data: {:?}", raw);
+        println!("[mq] incoming data.");
         let routing = raw.routing_key;
         let routing_copied = routing.clone();
         let host = raw.virtual_host.trim_end_matches("\0").to_string();
