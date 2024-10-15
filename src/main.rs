@@ -10,8 +10,8 @@ use std::{io, thread};
 
 // always remember that the last value of RoutingKey is the name of the Queue.
 // note that the \0 at the end of the strings must be trimmed using trim_end_matches() !!
-pub mod test;
 pub mod mq;
+pub mod test;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let ctx = Arc::new(Mutex::new(construct_ctx()?));
@@ -36,8 +36,7 @@ fn construct_ctx() -> Result<RuntimeContext, Box<dyn Error>> {
 }
 
 fn set_runtime(ctx: Arc<Mutex<RuntimeContext>>) -> JoinHandle<()> {
-    thread::scope(|scope| {
-    });
+    thread::scope(|scope| {});
     thread::spawn(move || {
         run(ctx);
     })

@@ -8,7 +8,7 @@ pub struct PhysicalConnectionFactory {
     local: Option<SocketAddr>,
     remote: Option<SocketAddr>,
     stream: Option<TcpStream>,
-    manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>
+    manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>,
 }
 
 impl PhysicalConnectionFactory {
@@ -17,11 +17,14 @@ impl PhysicalConnectionFactory {
             local: None,
             remote: None,
             stream: None,
-            manager_proxy: None
+            manager_proxy: None,
         }
     }
 
-    pub fn set_manager_proxy(mut self, manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>) -> Self {
+    pub fn set_manager_proxy(
+        mut self,
+        manager_proxy: Option<Arc<RwLock<PhysicalConnectionManager>>>,
+    ) -> Self {
         self.manager_proxy = manager_proxy;
         self
     }
@@ -53,10 +56,9 @@ impl PhysicalConnectionFactory {
                 closed: RefCell::from(false),
 
                 manager_proxy: self.manager_proxy.unwrap(),
-                channel_manager: RefCell::from(ChannelManager::new())
+                channel_manager: RefCell::from(ChannelManager::new()),
             })
-        }
-        else if let Some(conn) = self.stream {
+        } else if let Some(conn) = self.stream {
             self.local = Some(conn.local_addr().unwrap().clone());
             self.remote = Some(conn.peer_addr().unwrap().clone());
             Ok(PhysicalConnection {
@@ -66,11 +68,10 @@ impl PhysicalConnectionFactory {
                 closed: RefCell::from(false),
 
                 manager_proxy: self.manager_proxy.unwrap(),
-                channel_manager: RefCell::from(ChannelManager::new())
+                channel_manager: RefCell::from(ChannelManager::new()),
             })
-        }
-        else {
-           Err(())
+        } else {
+            Err(())
         }
     }
 }

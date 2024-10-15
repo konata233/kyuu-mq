@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 pub struct QueueManager {
-    queues: HashMap<String, Arc<RwLock<Queue>>>
+    queues: HashMap<String, Arc<RwLock<Queue>>>,
 }
 
 impl QueueManager {

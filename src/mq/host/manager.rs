@@ -7,14 +7,14 @@ use std::sync::{Arc, Mutex, RwLock};
 
 pub struct HostManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
-    virtual_hosts: HashMap<String, Arc<RwLock<VirtualHost>>>
+    virtual_hosts: HashMap<String, Arc<RwLock<VirtualHost>>>,
 }
 
 impl HostManager {
     pub fn new() -> HostManager {
         HostManager {
             breaker: None,
-            virtual_hosts: HashMap::new()
+            virtual_hosts: HashMap::new(),
         }
     }
 
@@ -24,7 +24,8 @@ impl HostManager {
     }
 
     pub fn add(&mut self, name: String, vhost: VirtualHost) {
-        self.virtual_hosts.insert(name, Arc::new(RwLock::new(vhost)));
+        self.virtual_hosts
+            .insert(name, Arc::new(RwLock::new(vhost)));
     }
 
     pub fn get(&mut self, name: String) -> Option<&mut Arc<RwLock<VirtualHost>>> {
@@ -46,10 +47,7 @@ impl HostManager {
         let io_type = &raw.io_type;
 
         if let Some(vhost) = vhost {
-            vhost
-                .read()
-                .unwrap()
-                .process_incoming(raw)
+            vhost.read().unwrap().process_incoming(raw)
 
             // todo: I see no difference whether to use read() or write().
             /*match io_type {

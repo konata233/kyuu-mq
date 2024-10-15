@@ -7,7 +7,7 @@ use std::sync::{Arc, RwLock};
 
 pub struct VirtualHost {
     pub name: String,
-    base_exchange: Arc<RwLock<Exchange>>
+    base_exchange: Arc<RwLock<Exchange>>,
 }
 
 impl VirtualHost {
@@ -37,14 +37,17 @@ impl VirtualHost {
     }
 
     pub fn get_queue(&self, name: &String, routing_key: RoutingKey) -> Option<Arc<RwLock<Queue>>> {
-        let base = self.base_exchange.read().unwrap().walk_readonly(routing_key, 0);
+        let base = self
+            .base_exchange
+            .read()
+            .unwrap()
+            .walk_readonly(routing_key, 0);
         if let Some(exc) = base {
             exc.get(0)?.read().unwrap().get_queue(name)
         } else {
             None
         }
     }
-
 
     pub fn drop_exchange(&mut self, name: String, routing_key: RoutingKey) -> &mut Self {
         let base = self.base_exchange.write().unwrap().walk(routing_key, 0);
@@ -85,24 +88,40 @@ impl VirtualHost {
                     match cmd {
                         RawCommand::NewQueue(data) => {
                             // dbg!("new queue");
-                            let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
+                            let queue_name = String::from_utf8(data)
+                                .unwrap()
+                                .trim_end_matches("\0")
+                                .trim()
+                                .to_string();
                             exc[0].write().unwrap().add_queue(&queue_name);
                         }
                         RawCommand::NewExchange(data) => {
                             // dbg!("new exchange");
-                            let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
+                            let exchange_name = String::from_utf8(data)
+                                .unwrap()
+                                .trim_end_matches("\0")
+                                .trim()
+                                .to_string();
                             exc[0].write().unwrap().add_exchange(exchange_name);
                         }
                         RawCommand::NewBinding(_) => {
                             // dbg!("new binding");
                         }
                         RawCommand::DropQueue(data) => {
-                            let queue_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
+                            let queue_name = String::from_utf8(data)
+                                .unwrap()
+                                .trim_end_matches("\0")
+                                .trim()
+                                .to_string();
                             exc[0].write().unwrap().remove_queue(queue_name);
                         }
                         RawCommand::DropExchange(data) => {
                             // dbg!("drop exchange");
-                            let exchange_name = String::from_utf8(data).unwrap().trim_end_matches("\0").trim().to_string();
+                            let exchange_name = String::from_utf8(data)
+                                .unwrap()
+                                .trim_end_matches("\0")
+                                .trim()
+                                .to_string();
                             exc[0].write().unwrap().remove_exchange(exchange_name);
                         }
                         RawCommand::DropBinding(_) => {
@@ -125,7 +144,7 @@ impl VirtualHost {
                                 .write()
                                 .unwrap()
                                 .push_back(QueueObject::new(&self.name, data))
-                        },
+                        }
                         RawMessage::Fetch(data) => {
                             // dbg!("fetch");
                             return exc[0]

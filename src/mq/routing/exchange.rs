@@ -97,8 +97,12 @@ impl Exchange {
             RoutingKey::Topic(key) => r = key,
             RoutingKey::Fanout(key) => r = key,
         }
-        let next_key  = r[next].clone();
-        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key.starts_with("!") || next == 2 {
+        let next_key = r[next].clone();
+        if (&next_key).starts_with("\0")
+            || next_key.is_empty()
+            || next_key.starts_with("!")
+            || next == 2
+        {
             Some(vec![self.self_ref.clone()?])
         } else if next_key.starts_with("*") {
             let mut vec = vec![];
@@ -107,11 +111,19 @@ impl Exchange {
             }
             return Some(vec);
         } else {
-            self.lower_exchange.get_mut(&next_key)?.write().unwrap().walk(routing_cloned, next + 1)
+            self.lower_exchange
+                .get_mut(&next_key)?
+                .write()
+                .unwrap()
+                .walk(routing_cloned, next + 1)
         }
     }
 
-    pub fn walk_readonly(&self, routing: RoutingKey, next: usize) -> Option<Vec<Arc<RwLock<Exchange>>>> {
+    pub fn walk_readonly(
+        &self,
+        routing: RoutingKey,
+        next: usize,
+    ) -> Option<Vec<Arc<RwLock<Exchange>>>> {
         if next > 2 {
             return None;
         }
@@ -123,8 +135,12 @@ impl Exchange {
             RoutingKey::Topic(key) => r = key,
             RoutingKey::Fanout(key) => r = key,
         }
-        let next_key  = r[next].clone();
-        if (&next_key).starts_with("\0") || next_key.is_empty() || next_key.starts_with("!") || next == 2 {
+        let next_key = r[next].clone();
+        if (&next_key).starts_with("\0")
+            || next_key.is_empty()
+            || next_key.starts_with("!")
+            || next == 2
+        {
             Some(vec![self.self_ref.clone()?])
         } else if next_key.starts_with("*") {
             let mut vec = vec![];
@@ -133,7 +149,11 @@ impl Exchange {
             }
             return Some(vec);
         } else {
-            self.lower_exchange.get(&next_key)?.read().unwrap().walk_readonly(routing_cloned, next + 1)
+            self.lower_exchange
+                .get(&next_key)?
+                .read()
+                .unwrap()
+                .walk_readonly(routing_cloned, next + 1)
         }
     }
 }

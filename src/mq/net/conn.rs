@@ -22,11 +22,10 @@ pub struct PhysicalConnection {
     pub closed: RefCell<bool>,
 
     pub manager_proxy: Arc<RwLock<PhysicalConnectionManager>>,
-    pub channel_manager: RefCell<ChannelManager>
+    pub channel_manager: RefCell<ChannelManager>,
 }
 
 impl PhysicalConnection {
-
     pub fn launch(self) -> Arc<Mutex<PhysicalConnection>> {
         let s0 = Arc::new(Mutex::new(self));
         let s1 = s0.clone();
@@ -66,7 +65,7 @@ impl PhysicalConnection {
                     _ => {
                         // dbg!("nop");
                         RawMessage::Nop
-                    },
+                    }
                 };
                 Raw::Message(msg)
             }
@@ -77,27 +76,27 @@ impl PhysicalConnection {
                     0u8 => {
                         // dbg!("new queue");
                         RawCommand::NewQueue(buffer)
-                    },
+                    }
                     1u8 => {
                         // dbg!("new exchange");
                         RawCommand::NewExchange(buffer)
-                    },
+                    }
                     2u8 => {
                         // dbg!("new binding");
                         RawCommand::NewBinding(buffer)
-                    },
+                    }
                     3u8 => {
                         // dbg!("drop queue");
                         RawCommand::DropQueue(buffer)
-                    },
+                    }
                     4u8 => {
                         // dbg!("drop exchange");
                         RawCommand::DropExchange(buffer)
-                    },
+                    }
                     5u8 => {
                         // dbg!("drop binding");
                         RawCommand::DropBinding(buffer)
-                    },
+                    }
                     _ => {
                         // dbg!("nop");
                         RawCommand::Nop
@@ -111,14 +110,26 @@ impl PhysicalConnection {
             }
         };
         // // dbg!(&raw);
-        
+
         let routing_arr = [
-            String::from_utf8(data_head.route0.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
-            String::from_utf8(data_head.route1.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
-            String::from_utf8(data_head.route2.clone().to_vec()).unwrap().trim_end_matches("\0").to_string(),
-            String::from_utf8(data_head.route3.clone().to_vec()).unwrap().trim_end_matches("\0").to_string()
+            String::from_utf8(data_head.route0.clone().to_vec())
+                .unwrap()
+                .trim_end_matches("\0")
+                .to_string(),
+            String::from_utf8(data_head.route1.clone().to_vec())
+                .unwrap()
+                .trim_end_matches("\0")
+                .to_string(),
+            String::from_utf8(data_head.route2.clone().to_vec())
+                .unwrap()
+                .trim_end_matches("\0")
+                .to_string(),
+            String::from_utf8(data_head.route3.clone().to_vec())
+                .unwrap()
+                .trim_end_matches("\0")
+                .to_string(),
         ];
-        
+
         // match third byte of routing_mod as routing type
         let routing: RoutingKey = match data_head.routing_mod[2] {
             0u8 => {
@@ -132,19 +143,19 @@ impl PhysicalConnection {
             2u8 => {
                 // dbg!("fanout");
                 RoutingKey::Fanout(routing_arr)
-            },
+            }
             _ => {
                 // dbg!("nop");
                 RoutingKey::Direct(routing_arr)
-            },
+            }
         };
-        
+
         RawData {
             raw,
             channel: channel.clone(),
             virtual_host: virtual_host.clone(),
             routing_key: routing,
-            io_type
+            io_type,
         }
     }
 
@@ -174,7 +185,6 @@ impl PhysicalConnection {
     }
 
     pub fn listen(&self) -> Result<(), Box<dyn Error>> {
-
         'listen: loop {
             let mut buf = [0u8; 256];
             self.stream.borrow_mut().set_nodelay(false)?;
@@ -193,12 +203,10 @@ impl PhysicalConnection {
 
                     let size = u64::from(head.slice_size);
                     // note that the head is not included when calculating 'count'.
-                    let count = u64::from(head.slice_count) ;
+                    let count = u64::from(head.slice_count);
 
                     let mut channel_manager = self.channel_manager.borrow_mut();
-                    let channel = channel_manager
-                        .get(&channel.clone())
-                        .unwrap();
+                    let channel = channel_manager.get(&channel.clone()).unwrap();
 
                     channel.set_receiving(u64::from(size) * u64::from(count));
                     // slice1(data_head, data[size]), slice2(data_head, data[size]), ...
@@ -237,7 +245,8 @@ impl PhysicalConnection {
                         let host = VirtualHost::new(raw.virtual_host.clone());
 
                         let io_type = &raw.io_type;
-                        let result = self.get_host_manager_proxy(io_type)
+                        let result = self
+                            .get_host_manager_proxy(io_type)
                             .read()
                             .unwrap()
                             .send_raw_to_host(raw);
@@ -282,12 +291,15 @@ impl PhysicalConnection {
                                 slice_count as u32,
                                 SLICE_SIZE as u32,
                                 0,
-                                0
+                                0,
                             );
                             let mut head_serialized = data_head.serialize_vec();
                             head_serialized.append(&mut buffer);
                             let concatenated = head_serialized;
-                            self.stream.borrow_mut().write_all(concatenated.as_slice()).unwrap();
+                            self.stream
+                                .borrow_mut()
+                                .write_all(concatenated.as_slice())
+                                .unwrap();
                             // dbg!("feedback sent!");
                             //// dbg!(&concatenated);
                         }
@@ -298,12 +310,18 @@ impl PhysicalConnection {
                     drop(channel_manager);
 
                     // todo: (IMPORTANT) add logic for closing the channel using attr 'command'
-                    let cmd = command.to_uppercase().as_str().trim_end_matches("\0").to_string();
+                    let cmd = command
+                        .to_uppercase()
+                        .as_str()
+                        .trim_end_matches("\0")
+                        .to_string();
                     // dbg!(&cmd);
                     match cmd.as_str() {
                         "CLOSE-CH" => {
                             // dbg!("close channel");
-                            self.channel_manager.borrow_mut().remove(channel_name.as_str());
+                            self.channel_manager
+                                .borrow_mut()
+                                .remove(channel_name.as_str());
                         }
                         _ => {
                             // dbg!("nop(cmd)");

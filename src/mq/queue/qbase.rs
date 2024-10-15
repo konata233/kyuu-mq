@@ -3,7 +3,7 @@ use crate::mq::queue::queue_object::QueueObject;
 pub struct Queue {
     name: String,
     data: Vec<QueueObject>,
-    len: u64
+    len: u64,
 }
 
 impl Queue {
@@ -11,7 +11,7 @@ impl Queue {
         Queue {
             name: String::from(name),
             data: Vec::new(),
-            len: 0
+            len: 0,
         }
     }
 

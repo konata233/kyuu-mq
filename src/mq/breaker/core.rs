@@ -24,42 +24,36 @@ impl Breaker {
     }
 
     pub fn init_managers(&mut self, self_ref: Arc<Mutex<Breaker>>) {
-        let host_manager = Arc::new(
-            RwLock::new(
-                HostManager::new().init(self_ref.clone())
-            )
-        );
-        self.host_manager = Some(
-            host_manager.clone()
-        );
+        let host_manager = Arc::new(RwLock::new(HostManager::new().init(self_ref.clone())));
+        self.host_manager = Some(host_manager.clone());
 
-        self.physical_connection_manager = Some(
-            Arc::new(
-                RwLock::new(
-                    PhysicalConnectionManager::new().init(self_ref.clone(), host_manager.clone())
-                )
-            )
-        );
+        self.physical_connection_manager = Some(Arc::new(RwLock::new(
+            PhysicalConnectionManager::new().init(self_ref.clone(), host_manager.clone()),
+        )));
     }
-
 
     pub fn start_worker(&mut self) {
         thread::scope(|scope| {
-             scope.spawn(|| {
-                self.listen().unwrap();
-            }).join().unwrap();
+            scope
+                .spawn(|| {
+                    self.listen().unwrap();
+                })
+                .join()
+                .unwrap();
         })
     }
 
     pub fn send_raw_to_host(&mut self, data: RawData) -> Option<QueueObject> {
-        self.host_manager.as_mut()?
+        self.host_manager
+            .as_mut()?
             .write()
             .unwrap()
             .send_raw_to_host(data)
     }
 
     pub fn stop_worker(&mut self) {
-        self.physical_connection_manager.as_mut()
+        self.physical_connection_manager
+            .as_mut()
             .unwrap()
             .write()
             .unwrap()
@@ -79,7 +73,8 @@ impl Breaker {
                     .set_manager_proxy(self.physical_connection_manager.clone())
                     .set_stream(stream)
                     .fetch();
-                self.physical_connection_manager.as_mut()
+                self.physical_connection_manager
+                    .as_mut()
                     .unwrap()
                     .write()
                     .unwrap()
@@ -99,22 +94,25 @@ impl Core {
         let breaker = Breaker::new(addr);
 
         let self_ref = Arc::new(Mutex::new(breaker));
-        self_ref.lock()
+        self_ref
+            .lock()
             .as_mut()
             .unwrap()
             .init_managers(self_ref.clone());
 
         // default host
         let default_name = String::from("MQ_HOST");
-        self_ref.lock().unwrap().host_manager.clone()
+        self_ref
+            .lock()
+            .unwrap()
+            .host_manager
+            .clone()
             .unwrap()
             .write()
             .unwrap()
             .add(default_name.clone(), VirtualHost::new(default_name));
 
-        Core {
-            breaker: self_ref,
-        }
+        Core { breaker: self_ref }
     }
 
     pub fn start(&mut self) {

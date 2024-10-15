@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex, RwLock};
 pub struct PhysicalConnectionManager {
     breaker: Option<Arc<Mutex<Breaker>>>,
     connections: Vec<Arc<Mutex<PhysicalConnection>>>,
-    pub host_manager: Option<Arc<RwLock<HostManager>>>
+    pub host_manager: Option<Arc<RwLock<HostManager>>>,
 }
 
 impl PhysicalConnectionManager {
@@ -23,7 +23,11 @@ impl PhysicalConnectionManager {
         }
     }
 
-    pub fn init(mut self, breaker: Arc<Mutex<Breaker>>, host_manager: Arc<RwLock<HostManager>>) -> Self {
+    pub fn init(
+        mut self,
+        breaker: Arc<Mutex<Breaker>>,
+        host_manager: Arc<RwLock<HostManager>>,
+    ) -> Self {
         self.breaker = Some(breaker);
         self.host_manager = Some(host_manager);
         self
@@ -36,7 +40,10 @@ impl PhysicalConnectionManager {
 
     pub fn remove(&mut self, conn: Arc<Mutex<PhysicalConnection>>) -> &mut Self {
         self.connections.remove(
-            self.connections.iter().position(|x| Arc::ptr_eq(x, &conn)).unwrap()
+            self.connections
+                .iter()
+                .position(|x| Arc::ptr_eq(x, &conn))
+                .unwrap(),
         );
         self
     }
@@ -53,10 +60,7 @@ impl PhysicalConnectionManager {
         for conn in &self.connections {
             let c = conn.lock().unwrap();
             if !c.closed.clone().clone().take() {
-                c.stream
-                    .borrow_mut()
-                    .shutdown(Shutdown::Both)
-                    .unwrap()
+                c.stream.borrow_mut().shutdown(Shutdown::Both).unwrap()
             }
         }
     }

@@ -1,5 +1,5 @@
-use crate::mq::protocol::protobase::{Deserialize, Serialize};
 use crate::mq::host::vhost::VirtualHost;
+use crate::mq::protocol::protobase::{Deserialize, Serialize};
 
 pub struct DataHead {
     pub virtual_host: [u8; 32],
@@ -23,19 +23,21 @@ pub struct DataHead {
     pub count: u32,
     pub msg_sign: u16,
     pub ack: u16,
-    pub reserved: [u8; 16]
+    pub reserved: [u8; 16],
 }
 
 impl DataHead {
-    pub fn new(virtual_host: VirtualHost,
-               channel: [u8; 32],
-               routing_mod: [u8; 4],
-               command: [u8; 24],
-               route: [u8; 128],
-               slice_count: u32,
-               slice_size: u32,
-               count: u32,
-               msg_sign: u16) -> DataHead {
+    pub fn new(
+        virtual_host: VirtualHost,
+        channel: [u8; 32],
+        routing_mod: [u8; 4],
+        command: [u8; 24],
+        route: [u8; 128],
+        slice_count: u32,
+        slice_size: u32,
+        count: u32,
+        msg_sign: u16,
+    ) -> DataHead {
         let mut host = virtual_host.name.as_bytes().to_vec();
         host.resize(32, 0u8);
         DataHead {
@@ -53,7 +55,7 @@ impl DataHead {
             count,
             msg_sign,
             ack: 0,
-            reserved: [0u8; 16]
+            reserved: [0u8; 16],
         }
     }
 }
@@ -90,11 +92,14 @@ impl Deserialize<256> for DataHead {
 
     fn deserialize(data: [u8; 256]) -> Self::T {
         let mut deserialized = data.to_vec();
-        let virtual_host_sha256 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
+        let virtual_host_sha256 =
+            <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
 
-        let channel_sha256 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
+        let channel_sha256 =
+            <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
         let version = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
-        let routing_mod = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
+        let routing_mod =
+            <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
         let command = <[u8; 24]>::try_from(deserialized.drain(0..24).collect::<Vec<_>>()).unwrap();
 
         let route0 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
@@ -105,11 +110,21 @@ impl Deserialize<256> for DataHead {
 
         let route3 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
 
-        let slice_count = <u32>::from_le_bytes(<[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap());
-        let slice_size = <u32>::from_le_bytes(<[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap());
-        let count = <u32>::from_le_bytes(<[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap());
-        let msg_sign = <u16>::from_le_bytes(<[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap());
-        let ack = <u16>::from_le_bytes(<[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap());
+        let slice_count = <u32>::from_le_bytes(
+            <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap(),
+        );
+        let slice_size = <u32>::from_le_bytes(
+            <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap(),
+        );
+        let count = <u32>::from_le_bytes(
+            <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap(),
+        );
+        let msg_sign = <u16>::from_le_bytes(
+            <[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap(),
+        );
+        let ack = <u16>::from_le_bytes(
+            <[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap(),
+        );
         let reserved = <[u8; 16]>::try_from(deserialized.drain(0..16).collect::<Vec<_>>()).unwrap();
 
         DataHead {
@@ -127,7 +142,7 @@ impl Deserialize<256> for DataHead {
             count,
             msg_sign,
             ack,
-            reserved
+            reserved,
         }
     }
 }
@@ -140,18 +155,23 @@ pub struct Acknowledge {
     version: [u8; 4],
     msg_sign: u16,
     ack: u16,
-    reserved: [u8; 24]
+    reserved: [u8; 24],
 }
 
 impl Acknowledge {
-    pub fn new(virtual_host: VirtualHost, sender: [u8; 32], ack: u16, msg_sign: u16) -> Acknowledge {
+    pub fn new(
+        virtual_host: VirtualHost,
+        sender: [u8; 32],
+        ack: u16,
+        msg_sign: u16,
+    ) -> Acknowledge {
         Acknowledge {
             virtual_host_sha256: <[u8; 32]>::try_from(virtual_host.name[0..32].as_bytes()).unwrap(),
             channel_sha256: sender,
             version: [1u8, 0u8, 0u8, 0u8],
             msg_sign,
             ack,
-            reserved: [0u8; 24]
+            reserved: [0u8; 24],
         }
     }
 }
@@ -179,12 +199,18 @@ impl Deserialize<96> for Acknowledge {
 
     fn deserialize(data: [u8; 96]) -> Self::T {
         let mut deserialized = data.to_vec();
-        let virtual_host_sha256 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
+        let virtual_host_sha256 =
+            <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
 
-        let channel_sha256 = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
+        let channel_sha256 =
+            <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
         let version = <[u8; 4]>::try_from(deserialized.drain(0..4).collect::<Vec<_>>()).unwrap();
-        let msg_sign = <u16>::from_le_bytes(<[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap());
-        let ack = <u16>::from_le_bytes(<[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap());
+        let msg_sign = <u16>::from_le_bytes(
+            <[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap(),
+        );
+        let ack = <u16>::from_le_bytes(
+            <[u8; 2]>::try_from(deserialized.drain(0..2).collect::<Vec<_>>()).unwrap(),
+        );
         let reserved = <[u8; 24]>::try_from(deserialized.drain(0..24).collect::<Vec<_>>()).unwrap();
 
         Acknowledge {
@@ -193,7 +219,7 @@ impl Deserialize<96> for Acknowledge {
             version,
             msg_sign,
             ack,
-            reserved
+            reserved,
         }
     }
 }
@@ -201,7 +227,7 @@ impl Deserialize<96> for Acknowledge {
 pub struct Data {
     virtual_host: VirtualHost,
     channel: [u8; 32],
-    data: [u8; 448]
+    data: [u8; 448],
 }
 
 impl Data {
@@ -209,7 +235,7 @@ impl Data {
         Data {
             virtual_host,
             channel,
-            data
+            data,
         }
     }
 }
@@ -235,9 +261,7 @@ impl Deserialize<512> for Data {
     fn deserialize(data: [u8; 512]) -> Self::T {
         let mut deserialized = data.to_vec();
         let virtual_host = VirtualHost::new(
-            String::from_utf8(
-                deserialized.drain(0..32)
-                    .collect::<Vec<_>>()).unwrap()
+            String::from_utf8(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap(),
         );
 
         let channel = <[u8; 32]>::try_from(deserialized.drain(0..32).collect::<Vec<_>>()).unwrap();
@@ -246,7 +270,7 @@ impl Deserialize<512> for Data {
         Data {
             virtual_host,
             channel,
-            data
+            data,
         }
     }
 }

@@ -6,27 +6,27 @@ pub struct RawData {
     pub channel: String,
     pub virtual_host: String,
     pub routing_key: RoutingKey,
-    pub io_type: IOType
+    pub io_type: IOType,
 }
 
 #[derive(Debug)]
 pub enum IOType {
     Read,
-    Write
+    Write,
 }
 
 #[derive(Debug)]
 pub enum Raw {
     Message(RawMessage),
     Command(RawCommand),
-    Nop
+    Nop,
 }
 
 #[derive(Debug)]
 pub enum RawMessage {
     Push(Vec<u8>),
     Fetch(Vec<u8>),
-    Nop
+    Nop,
 }
 
 #[derive(Debug)]
@@ -39,5 +39,5 @@ pub enum RawCommand {
     DropExchange(Vec<u8>),
     DropBinding(Vec<u8>),
 
-    Nop
+    Nop,
 }

@@ -2,8 +2,8 @@ pub struct Channel {
     pub name: String,
     receiving: u64,
     received: u64,
-    
-    buffer: Vec<u8>
+
+    buffer: Vec<u8>,
 }
 
 impl Channel {
