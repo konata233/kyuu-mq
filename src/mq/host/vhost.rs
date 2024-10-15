@@ -65,7 +65,7 @@ impl VirtualHost {
         self
     }
 
-    pub fn process_incoming(&self, raw: RawData) -> Option<QueueObject> {
+    pub fn process_incoming(&self, raw: RawData, err_handle: &mut u16) -> Option<QueueObject> {
         // todo: implement advanced routing: * # ...
         // always remember that the last value of RoutingKey is the name of the Queue.
 
@@ -147,13 +147,19 @@ impl VirtualHost {
                         }
                         RawMessage::Fetch(data) => {
                             // dbg!("fetch");
-                            return exc[0]
+                            match exc[0]
                                 .read()
                                 .unwrap()
                                 .get_queue(&queue_name)?
                                 .write()
                                 .unwrap()
-                                .pop_front();
+                                .pop_front() {
+                                Some(obj) => return Some(obj),
+                                None => {
+                                    *err_handle = 0xf;
+                                    return Some(QueueObject::new(&"".to_string(), Vec::new()));
+                                }
+                            };
                             // the 'write' for queue is temporary. but I have no idea how to optimize it.
                         }
                         RawMessage::Nop => {

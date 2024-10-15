@@ -43,12 +43,12 @@ impl Breaker {
         })
     }
 
-    pub fn send_raw_to_host(&mut self, data: RawData) -> Option<QueueObject> {
+    pub fn send_raw_to_host(&mut self, data: RawData, err_handle: &mut u16) -> Option<QueueObject> {
         self.host_manager
             .as_mut()?
             .write()
             .unwrap()
-            .send_raw_to_host(data)
+            .send_raw_to_host(data, err_handle)
     }
 
     pub fn stop_worker(&mut self) {

@@ -40,14 +40,14 @@ impl HostManager {
         self.virtual_hosts.values().cloned().collect()
     }
 
-    pub fn send_raw_to_host(&self, raw: RawData) -> Option<QueueObject> {
+    pub fn send_raw_to_host(&self, raw: RawData, err_handle: &mut u16) -> Option<QueueObject> {
         //println!("!!");
         let host_name = raw.virtual_host.trim().to_string();
         let vhost = self.virtual_hosts.get(&host_name).cloned();
         let io_type = &raw.io_type;
 
         if let Some(vhost) = vhost {
-            vhost.read().unwrap().process_incoming(raw)
+            vhost.read().unwrap().process_incoming(raw, err_handle)
 
             // todo: I see no difference whether to use read() or write().
             /*match io_type {

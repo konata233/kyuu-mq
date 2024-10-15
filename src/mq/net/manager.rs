@@ -48,12 +48,12 @@ impl PhysicalConnectionManager {
         self
     }
 
-    pub fn send_raw_data(&self, raw_data: RawData) -> Option<QueueObject> {
+    pub fn send_raw_data(&self, raw_data: RawData, err_handle: &mut u16) -> Option<QueueObject> {
         self.breaker
             .clone()?
             .lock()
             .unwrap()
-            .send_raw_to_host(raw_data)
+            .send_raw_to_host(raw_data, err_handle)
     }
 
     pub fn close(&self) {

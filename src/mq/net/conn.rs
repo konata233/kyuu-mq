@@ -245,11 +245,13 @@ impl PhysicalConnection {
                         let host = VirtualHost::new(raw.virtual_host.clone());
 
                         let io_type = &raw.io_type;
+                        let mut err_handle: u16 = 0;
+
                         let result = self
                             .get_host_manager_proxy(io_type)
                             .read()
                             .unwrap()
-                            .send_raw_to_host(raw);
+                            .send_raw_to_host(raw, &mut err_handle);
 
                         // todo: I see no difference whether to use read() or write().
                         // but that remains to be tested.
@@ -291,7 +293,7 @@ impl PhysicalConnection {
                                 slice_count as u32,
                                 SLICE_SIZE as u32,
                                 0,
-                                0,
+                                err_handle,
                             );
                             let mut head_serialized = data_head.serialize_vec();
                             head_serialized.append(&mut buffer);
@@ -300,8 +302,6 @@ impl PhysicalConnection {
                                 .borrow_mut()
                                 .write_all(concatenated.as_slice())
                                 .unwrap();
-                            // dbg!("feedback sent!");
-                            //// dbg!(&concatenated);
                         }
                     }
 
