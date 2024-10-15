@@ -273,7 +273,7 @@ impl PhysicalConnection {
                         // seems that when lock is acquired here, send_raw_data() can't use it, causing deadlock.
                         if let Some(feedback) = result {
                             let mut buffer = feedback.content;
-                            if buffer.len() % 256 != 0 {
+                            if buffer.len() % 256 != 0 || buffer.len() == 0 {
                                 // dbg!("buffer size not aligned to 256 bytes!", buffer.len());
                                 let align = 256 - buffer.len() % 256;
                                 for _ in 0..align {
@@ -295,6 +295,7 @@ impl PhysicalConnection {
                                 0,
                                 err_handle,
                             );
+                            // println!("sending feedback: {:?}", data_head);
                             let mut head_serialized = data_head.serialize_vec();
                             head_serialized.append(&mut buffer);
                             let concatenated = head_serialized;

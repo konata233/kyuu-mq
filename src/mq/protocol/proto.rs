@@ -1,6 +1,7 @@
 use crate::mq::host::vhost::VirtualHost;
 use crate::mq::protocol::protobase::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub struct DataHead {
     pub virtual_host: [u8; 32],
 

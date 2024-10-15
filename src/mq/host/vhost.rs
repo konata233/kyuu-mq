@@ -157,7 +157,7 @@ impl VirtualHost {
                                 Some(obj) => return Some(obj),
                                 None => {
                                     *err_handle = 0xf;
-                                    return Some(QueueObject::new(&"".to_string(), Vec::new()));
+                                    return Some(QueueObject::new(&host, Vec::new()));
                                 }
                             };
                             // the 'write' for queue is temporary. but I have no idea how to optimize it.
