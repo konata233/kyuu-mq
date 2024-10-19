@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "inio"
+version = "0.1.0"
+
+[[package]]
 name = "msg-queue"
 version = "0.1.0"
+dependencies = [
+ "inio",
+]

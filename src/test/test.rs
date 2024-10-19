@@ -1,10 +1,6 @@
-use crate::mq::breaker::core::Core;
-
 pub fn test() {
     test_host();
     return;
-    let mut core = Core::new("127.0.0.1:11451");
-    core.start();
 }
 
 pub fn test_host() {

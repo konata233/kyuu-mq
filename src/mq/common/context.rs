@@ -1,6 +1,7 @@
 pub struct RuntimeContext {
     pub local_host: String,
     pub local_port: u16,
+    pub hosts: Vec<String>,
 }
 
 impl RuntimeContext {
@@ -8,6 +9,7 @@ impl RuntimeContext {
         RuntimeContext {
             local_host,
             local_port,
+            hosts: Vec::new(),
         }
     }
 }

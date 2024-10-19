@@ -82,7 +82,7 @@ impl VirtualHost {
         };
 
         let exchange = self.base_exchange.write().unwrap().walk(routing_copied, 0);
-        if let Some(mut exc) = exchange {
+        if let Some(exc) = exchange {
             match raw.raw {
                 Raw::Command(cmd) => {
                     match cmd {

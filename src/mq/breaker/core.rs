@@ -1,3 +1,4 @@
+use crate::mq::common::context::RuntimeContext;
 use crate::mq::host::manager::HostManager;
 use crate::mq::host::vhost::VirtualHost;
 use crate::mq::net::factory::PhysicalConnectionFactory;
@@ -90,7 +91,8 @@ pub struct Core {
 }
 
 impl Core {
-    pub fn new<A: ToSocketAddrs>(addr: A) -> Core {
+    pub fn new(ctx: Arc<Mutex<RuntimeContext>>) -> Core {
+        let addr = format!("{}:{}", ctx.lock().unwrap().local_host, ctx.lock().unwrap().local_port);
         let breaker = Breaker::new(addr);
 
         let self_ref = Arc::new(Mutex::new(breaker));
@@ -111,6 +113,18 @@ impl Core {
             .write()
             .unwrap()
             .add(default_name.clone(), VirtualHost::new(default_name));
+
+        for h in &ctx.lock().unwrap().hosts {
+            self_ref
+                .lock()
+                .unwrap()
+                .host_manager
+                .clone()
+                .unwrap()
+                .write()
+                .unwrap()
+                .add(h.clone(), VirtualHost::new(h.clone()));
+        }
 
         Core { breaker: self_ref }
     }
